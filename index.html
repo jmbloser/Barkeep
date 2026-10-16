@@ -7,11 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap">
 <style>
-/* Layout: one full-bleed canvas (the bar top / tray), a translucent HUD strip on top, a control strip on the bottom, a slide-up tuning sheet. Single committed look: a dark lacquered bar at night. */
+/* Layout: full-bleed canvas tray between a solid HUD strip (top) and a challenge strip (bottom); menus are centered cards over the bar. Single committed look: a dark lacquered bar at night. */
 :root{
-  --bar:#1b100c; --bar-hi:#3b2318; --brass:#c99a4a; --foam:#f3e7cf;
+  --bar:#1b100c; --brass:#c99a4a; --foam:#f3e7cf;
   --ink:#f0e5d4; --ink-dim:#a8957f; --hold:#86b394; --slide:#e8813f; --spill:#d9534f;
-  --panel:rgba(24,14,10,.94); --line:rgba(201,154,74,.28);
+  --panel:rgba(24,14,10,.96); --line:rgba(201,154,74,.28); --wash:rgba(255,255,255,.06);
   --f-display:'Alfa Slab One', Georgia, serif;
   --f-body:'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
   --f-mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
@@ -23,44 +23,89 @@ html,body{height:100%;margin:0;background:var(--bar);color:var(--ink);overscroll
 body{font-family:var(--f-body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 #app{position:fixed;inset:0}
 #c{position:absolute;inset:0;width:100%;height:100%;display:block}
-.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;display:flex;flex-direction:column;gap:12px;pointer-events:none;background:var(--bar);border-bottom:1px solid var(--line)}
-.toprow{display:flex;align-items:center;gap:12px}
-.brand{font-family:var(--f-display);font-size:26px;letter-spacing:.02em;color:var(--brass);line-height:1}
-.chip{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1.5px solid currentColor;color:var(--hold)}
-.chip.slide{color:var(--slide)}
-.chip.spilled{color:var(--spill)}
-#level{width:52px;height:52px;flex:none;margin-left:auto}
-.stats{display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:end}
-.stat{display:flex;flex-direction:column;gap:3px;min-width:0}
-.stat b{font-family:var(--f-mono);font-weight:500;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
-.stat span{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
-.spillwrap{display:flex;align-items:center;gap:10px}
-.meter{flex:1;height:16px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid var(--line);overflow:hidden}
-.meter i{display:block;height:100%;width:0;background:var(--spill);transition:width .15s}
-#spillpct{font-size:18px}
-.bottom{position:absolute;left:0;right:0;bottom:0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;justify-content:center;background:linear-gradient(rgba(27,16,12,0),rgba(27,16,12,.92) 45%)}
-button{font:600 14px/1 var(--f-body);letter-spacing:.06em;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;min-width:84px}
+
+/* HUD */
+.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;display:flex;flex-direction:column;gap:10px;background:var(--bar);border-bottom:1px solid var(--line)}
+.toprow{display:flex;align-items:center;gap:12px;min-width:0}
+#who{font-family:var(--f-display);font-size:26px;color:var(--brass);line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+#clock{font-family:var(--f-mono);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+#clock small{font-size:16px;color:var(--ink-dim);margin-left:2px}
+.beerrow{display:flex;align-items:center;gap:12px}
+.beerlab{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.meter{flex:1;height:20px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--line);overflow:hidden}
+.meter i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#b8650f,#f0b23c);transition:width .15s}
+.meter.low i{background:var(--spill)}
+#beerpct{font-family:var(--f-mono);font-size:20px;min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums}
+#level{width:52px;height:52px;flex:none}
+#endBtn{min-width:0;padding:9px 12px;font-size:13px}
+
+/* Bottom strip */
+.bottom{position:absolute;left:0;right:0;bottom:0;min-height:calc(env(safe-area-inset-bottom,0px) + 136px);padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:var(--bar);border-top:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+#chal{display:flex;flex-direction:column;gap:8px}
+.chalhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+#chalText{font-size:27px;font-weight:600;line-height:1.15;text-wrap:balance;min-height:2.3em;display:flex;align-items:center}
+.cbar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.cbar i{display:block;height:100%;width:0;background:var(--brass)}
+#chal.fresh #chalText{animation:pop .6s ease-out}
+@keyframes pop{0%{color:#1b100c;background:var(--brass);transform:scale(1.04)}100%{color:var(--ink);background:transparent;transform:none}}
+#practiceBar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+button{font:600 16px/1 var(--f-body);letter-spacing:.05em;color:var(--ink);background:var(--wash);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;min-width:84px}
 button:active{background:rgba(201,154,74,.18)}
 button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);font-size:16px;padding:15px 26px}
-.hint{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;font-size:13px;color:var(--ink-dim);pointer-events:none}
-.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;background:rgba(14,8,6,.72)}
-.card{width:100%;max-width:520px;max-height:92%;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:18px}
-.card h1{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:40px;line-height:1.05;margin:0;text-wrap:balance}
-.card p{margin:0;line-height:1.45;color:var(--ink);font-size:20px}
-.card p.small{font-size:17px;color:var(--ink-dim)}
-.card .primary{font-size:22px;padding:20px 26px}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:14px;max-height:72%;overflow-y:auto;touch-action:pan-y}
-.sheet h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--brass);display:flex;justify-content:space-between;align-items:center}
+button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);font-size:22px;padding:20px 26px}
+
+#countdown{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:var(--f-display);font-size:120px;color:var(--brass);text-shadow:0 4px 24px rgba(0,0,0,.6)}
+.hint{position:absolute;left:16px;right:16px;text-align:center;font-size:16px;color:var(--ink-dim);pointer-events:none}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:rgba(14,8,6,.8);touch-action:pan-y}
+.card{width:100%;max-width:540px;max-height:100%;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px 22px;display:flex;flex-direction:column;gap:18px;-webkit-overflow-scrolling:touch}
+.card h1{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:44px;line-height:1.02;margin:0;text-wrap:balance}
+.card h2{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:30px;line-height:1.1;margin:0;text-wrap:balance}
+.card p{margin:0;line-height:1.45;font-size:19px}
+.card .dim{color:var(--ink-dim);font-size:17px}
+.eyebrow{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.field{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{flex:1;min-width:0;padding:14px 4px;font-size:18px;letter-spacing:.02em}
+.seg button[aria-pressed="true"]{background:var(--brass);color:#1b100c;border-color:var(--brass)}
+.names{display:flex;flex-direction:column;gap:8px}
+.names label{display:grid;grid-template-columns:2.2em 1fr;align-items:center;gap:8px;font-family:var(--f-mono);color:var(--ink-dim);font-size:18px}
+.names input{font:600 20px var(--f-body);color:var(--ink);background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0;-webkit-user-select:text;user-select:text}
+.names input:focus{outline:2px solid var(--brass);outline-offset:1px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow button{flex:1}
+details{font-size:17px;line-height:1.45}
+details summary{cursor:pointer;color:var(--brass);font-weight:600}
+details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.bigname{font-family:var(--f-display);font-size:52px;color:var(--ink);line-height:1;overflow-wrap:anywhere}
+.bigtime{font-family:var(--f-mono);font-size:64px;line-height:1;color:var(--brass);font-variant-numeric:tabular-nums}
+.bigtime small{font-size:26px;color:var(--ink-dim)}
+.reason{display:inline-block;align-self:flex-start;font-size:16px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:7px 12px;border-radius:999px;border:1.5px solid var(--spill);color:var(--spill)}
+.reason.dry{border-color:var(--slide);color:var(--slide)}
+.reason.quit{border-color:var(--ink-dim);color:var(--ink-dim)}
+table{width:100%;border-collapse:collapse;font-size:19px}
+th{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);text-align:left;padding:0 6px 8px}
+td{padding:11px 6px;border-top:1px solid var(--line)}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.rank{font-family:var(--f-display);color:var(--brass);width:1.8em}
+tr.lead td{background:rgba(201,154,74,.1)}
+.winner{font-size:20px;line-height:1.35}
+.winner b{color:var(--brass)}
+
+/* Tuning sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:14px;max-height:80%;overflow-y:auto;touch-action:pan-y;z-index:5}
+.sheet h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:22px;color:var(--brass);display:flex;justify-content:space-between;align-items:center}
 .row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
-.row label{font-size:14px}
-.row output{font-family:var(--f-mono);font-size:13px;color:var(--brass);font-variant-numeric:tabular-nums}
-.row small{grid-column:1/-1;font-size:12px;color:var(--ink-dim)}
+.row label{font-size:17px}
+.row output{font-family:var(--f-mono);font-size:15px;color:var(--brass);font-variant-numeric:tabular-nums}
+.row small{grid-column:1/-1;font-size:14px;color:var(--ink-dim)}
 .row input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--brass);touch-action:pan-x}
-.toggles{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.toggles{display:flex;gap:18px;flex-wrap:wrap;font-size:17px}
 .toggles label{display:flex;gap:8px;align-items:center}
-.toggles input{accent-color:var(--brass);width:18px;height:18px}
-@media (prefers-reduced-motion: reduce){ .sheet{transition:none} }
+.toggles input{accent-color:var(--brass);width:20px;height:20px}
+@media (prefers-reduced-motion: reduce){ #chal.fresh #chalText{animation:none} }
 </style>
 
 </head>
@@ -70,92 +115,252 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
 
   <div id="top" class="top">
     <div class="toprow">
-      <div class="brand">Barkeep</div>
-      <div id="state" class="chip">Holding</div>
-      <canvas id="level" aria-label="Tilt level with grip ring"></canvas>
+      <div id="who">Barkeep</div>
+      <div id="clock">0.0<small>s</small></div>
+      <button id="endBtn" type="button" hidden>End</button>
     </div>
-    <div class="stats">
-      <div class="stat"><b id="tilt">0.0°</b><span>Tilt</span></div>
-      <div class="stat"><b id="speed">0</b><span>Speed</span></div>
-      <div class="stat"><div class="spillwrap"><div class="meter"><i id="spillbar"></i></div><b id="spillpct">0%</b></div><span>Spill</span></div>
+    <div class="beerrow">
+      <span class="beerlab">Beer</span>
+      <div id="meter" class="meter"><i id="beerbar"></i></div>
+      <span id="beerpct">100%</span>
+      <canvas id="level" aria-label="Tilt level with grip ring"></canvas>
     </div>
   </div>
 
+  <div id="countdown" hidden></div>
   <div id="hint" class="hint" hidden>No tilt sensor here. Drag on the bar to tilt it.</div>
 
   <div id="bottom" class="bottom">
-    <button id="zeroBtn" type="button">Zero</button>
-    <button id="resetBtn" type="button">Fresh pint</button>
-    <button id="tuneBtn" type="button">Tune</button>
+    <div id="chal">
+      <div class="chalhead"><span id="chalLab">Get ready</span><span id="chalNext"></span></div>
+      <div id="chalText">Hold the tray level.</div>
+      <div class="cbar"><i id="chalBar"></i></div>
+    </div>
+    <div id="practiceBar" hidden>
+      <button id="zeroBtn" type="button">Zero</button>
+      <button id="refillBtn" type="button">Fresh pint</button>
+      <button id="tuneBtn2" type="button">Tune</button>
+      <button id="menuBtn" type="button">Menu</button>
+    </div>
+  </div>
+
+  <!-- Setup -->
+  <div id="menu" class="overlay">
+    <div class="card">
+      <h1>Barkeep</h1>
+      <p>Carry the pint on your palm like a tray. Keep beer in the glass as long as you can while doing whatever the bar asks.</p>
+      <div class="field">
+        <span class="eyebrow">Players</span>
+        <div id="countSeg" class="seg" role="group" aria-label="Number of players"></div>
+      </div>
+      <div class="field">
+        <span class="eyebrow">Names</span>
+        <div id="names" class="names"></div>
+      </div>
+      <div class="field">
+        <span class="eyebrow">Challenges</span>
+        <div id="paceSeg" class="seg" role="group" aria-label="Challenge pace"></div>
+        <span class="dim" id="paceNote"></span>
+      </div>
+      <details>
+        <summary>How it plays</summary>
+        <ul>
+          <li>Each player gets one turn per game. Your score is how many seconds you keep beer in the glass.</li>
+          <li>Rest the phone flat on your palm. Hold it level through the 3-2-1 so it can find level.</li>
+          <li>Rail bumps slop beer. Leaning on the rail dribbles it out. A hard hit knocks the glass over and ends your turn.</li>
+          <li>A new challenge pops up at the bottom every few seconds. Everyone else is the judge.</li>
+          <li>The bar gets slicker with every challenge, so nobody lasts forever.</li>
+        </ul>
+      </details>
+      <button id="startBtn" class="primary" type="button">Start game</button>
+      <div class="btnrow">
+        <button id="practiceBtn" type="button">Practice</button>
+        <button id="tuneBtn" type="button">Table settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hand-off -->
+  <div id="handoff" class="overlay" hidden>
+    <div class="card">
+      <span class="eyebrow" id="hoEyebrow">Game 1 · Turn 1 of 2</span>
+      <p class="dim">Pass the tray to</p>
+      <div class="bigname" id="hoName">Player</div>
+      <p>Phone flat on your palm, screen up. Tap Ready, then keep it level for the count.</p>
+      <button id="readyBtn" class="primary" type="button">Ready</button>
+    </div>
+  </div>
+
+  <!-- Turn result -->
+  <div id="result" class="overlay" hidden>
+    <div class="card">
+      <span class="eyebrow" id="rsEyebrow">Turn over</span>
+      <div class="bigname" id="rsName">Player</div>
+      <div class="bigtime" id="rsTime">0.0<small>s</small></div>
+      <span class="reason" id="rsReason">Knocked it over</span>
+      <p class="dim" id="rsDetail"></p>
+      <button id="rsNext" class="primary" type="button">Next</button>
+    </div>
+  </div>
+
+  <!-- Standings -->
+  <div id="standings" class="overlay" hidden>
+    <div class="card">
+      <span class="eyebrow" id="stEyebrow">Standings</span>
+      <h2 id="stTitle">After game 1</h2>
+      <p class="winner" id="stWinner"></p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th></th><th>Player</th><th class="num" id="stGameHead">Game</th><th class="num">Total</th></tr></thead>
+        <tbody id="stBody"></tbody>
+      </table></div>
+      <button id="nextGameBtn" class="primary" type="button">Play game 2</button>
+      <div class="btnrow"><button id="newPlayersBtn" type="button">Change players</button></div>
+    </div>
   </div>
 
   <div id="sheet" class="sheet" hidden>
-    <h2>Tuning <button id="closeTune" type="button" style="min-width:0;padding:8px 12px">Done</button></h2>
+    <h2>Table settings <button id="closeTune" type="button" style="min-width:0;padding:10px 14px">Done</button></h2>
     <div class="row"><label for="sens">Tilt power</label><output id="sensOut"></output>
       <input id="sens" type="range" min="0.4" max="2.5" step="0.05"><small>How hard a given tilt pushes the glass.</small></div>
     <div class="row"><label for="grip">Breakaway angle</label><output id="gripOut"></output>
-      <input id="grip" type="range" min="1" max="20" step="0.5"><small>Tilt needed before a resting glass lets go (static friction).</small></div>
+      <input id="grip" type="range" min="1" max="20" step="0.5"><small>Tilt needed before a resting glass lets go.</small></div>
     <div class="row"><label for="slide">Sliding drag</label><output id="slideOut"></output>
-      <input id="slide" type="range" min="0" max="0.12" step="0.005"><small>Friction once it's moving. Lower than grip, so it lurches when it breaks free.</small></div>
+      <input id="slide" type="range" min="0" max="0.12" step="0.005"><small>Friction once it's moving.</small></div>
     <div class="row"><label for="slick">Slickness at speed</label><output id="slickOut"></output>
-      <input id="slick" type="range" min="0" max="3" step="0.1"><small>Drag fades as speed builds, so a runaway pint takes more counter-tilt to stop.</small></div>
+      <input id="slick" type="range" min="0" max="3" step="0.1"><small>Drag fades as speed builds.</small></div>
     <div class="row"><label for="bounce">Rail bounce</label><output id="bounceOut"></output>
-      <input id="bounce" type="range" min="0" max="0.9" step="0.05"><small>How much speed survives hitting the edge.</small></div>
+      <input id="bounce" type="range" min="0" max="0.9" step="0.05"><small>How much speed survives hitting the rail.</small></div>
+    <div class="row"><label for="knock">Knock-over speed</label><output id="knockOut"></output>
+      <input id="knock" type="range" min="1.2" max="5" step="0.1"><small>Rail hit speed that tips the glass. Lower is harsher.</small></div>
+    <div class="row"><label for="slop">Slop per bump</label><output id="slopOut"></output>
+      <input id="slop" type="range" min="0" max="3" step="0.1"><small>How much beer a softer rail hit spills.</small></div>
+    <div class="row"><label for="ramp">Slicker each challenge</label><output id="rampOut"></output>
+      <input id="ramp" type="range" min="0" max="0.2" step="0.01"><small>How much harder the bar gets with every new challenge.</small></div>
     <div class="toggles">
+      <label><input id="sound" type="checkbox"> Sound</label>
       <label><input id="flipX" type="checkbox"> Flip left/right</label>
       <label><input id="flipY" type="checkbox"> Flip up/down</label>
     </div>
     <button id="defaultsBtn" type="button">Restore defaults</button>
   </div>
-
-  <div id="intro" class="overlay">
-    <div class="card">
-      <h1>Carry the pint</h1>
-      <p>Rest the phone flat on your palm, screen up, like a serving tray. Tap Start and hold steady for a moment while it finds level.</p>
-      <p>Small tilts won't budge the glass. Tip past the breakaway angle and it slides, and the faster it goes the harder you'll have to counter-tilt to catch it.</p>
-      <p class="small">Keep the phone in portrait. If it slides the wrong way, use Tune → Flip.</p>
-      <button id="startBtn" class="primary" type="button">Start</button>
-    </div>
-  </div>
 </div>
 
 <script>
 (() => {
-  const DEF = { sens: 1, grip: 7, slide: 0.035, slick: 1.2, bounce: 0.4, flipX: false, flipY: false };
-  let P = { ...DEF };
-  try { const s = JSON.parse(localStorage.getItem('barkeep-tune') || 'null'); if (s) P = { ...DEF, ...s }; } catch (e) {}
-  const save = () => { try { localStorage.setItem('barkeep-tune', JSON.stringify(P)); } catch (e) {} };
+  // ================= data =================
+  const CHALLENGES = [
+    'Spin around 360°',
+    'Jump off the ground 3 times',
+    'Pass the phone between hands 3 times',
+    'Pass the phone under one of your legs',
+    'Salsa dance for 3 seconds',
+    'Do 3 squats',
+    'Stand on one foot for 5 seconds',
+    'Hop on one foot 3 times',
+    'Raise the tray over your head for 3 seconds',
+    'Lower the tray to your knees and back up',
+    'Switch hands',
+    'Take 5 steps backward',
+    'Sidestep 4 steps left, then 4 right',
+    'Walk heel-to-toe for 5 steps',
+    'Sit down on the floor and stand back up',
+    'Kneel on one knee, then stand',
+    'March in place with high knees for 5 steps',
+    'Spin around twice the other way',
+    'Moonwalk 3 steps',
+    'Do the twist for 3 seconds',
+    'Touch your toes with your free hand',
+    'Take a deep bow to your audience',
+    'Hold the tray out at arm’s length for 3 seconds',
+    'High-five someone with your free hand',
+    'Walk a full lap around the nearest chair',
+    'Shout “Order up!” in your best waiter voice',
+    'Close your eyes for 3 seconds',
+    'Do a lunge on each leg',
+    'Balance on your tiptoes for 5 seconds',
+    'Wave to the crowd like royalty for 3 seconds',
+    'Walk to the nearest door and back',
+    'Cross your legs and uncross them while standing',
+  ];
+  const PACES = [
+    { id: 'off', label: 'Off', s: 0, note: 'No challenges. Just carry the pint.' },
+    { id: 'easy', label: 'Easy', s: 10, note: 'A new challenge every 10 seconds.' },
+    { id: 'normal', label: 'Normal', s: 6, note: 'A new challenge every 6 seconds.' },
+    { id: 'frantic', label: 'Frantic', s: 4, note: 'A new challenge every 4 seconds.' },
+  ];
+  const DEF = { sens: 1, grip: 7, slide: 0.035, slick: 1.2, bounce: 0.4, knock: 2.4, slop: 1, ramp: 0.07, sound: true, flipX: false, flipY: false };
+  const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ? { ...d, ...v } : { ...d }; } catch (e) { return { ...d }; } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let P = load('barkeep-tune', DEF);
+  const S = load('barkeep-setup', { count: 2, names: ['', '', '', '', ''], pace: 'normal' });
+  const saveP = () => store('barkeep-tune', P), saveS = () => store('barkeep-setup', S);
 
   const $ = id => document.getElementById(id);
   const cv = $('c'), ctx = cv.getContext('2d');
   const lv = $('level'), lctx = lv.getContext('2d');
-  let W = 0, H = 0, DPR = 1, R = 40, wood = null, T = 0, B = 0;
+  let W = 0, H = 0, DPR = 1, R = 40, wood = null, T = 0, B = 0, SZ = 300;
 
-  // ---------- state ----------
-  const glass = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0 };
-  let spill = 0, moving = false, flash = 0;
-  const sensor = { live: false, x: 0, y: 0, z: 9.81, fx: 0, fy: 0, sign: 1 };
+  // ================= state =================
+  // mode: menu | handoff | countdown | play | over | result | standings | practice
+  let mode = 'menu';
+  const glass = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0, tipped: false };
+  let beer = 100, flash = 0, onRail = false, moving = false;
+  const puddles = [];
+  const run = { t: 0, level: 0, nextCh: 0, chStart: 0, chCount: 0, reason: '', cdStart: 0 };
+  const game = { players: [], gameNo: 1, turn: 0, scores: [] };
+  let deck = [];
+  const sensor = { live: false, on: false, x: 0, y: 0, z: 9.81, fx: 0, fy: 0, sign: 1 };
   let base = { x: 0, y: 0 };
-  const virt = { x: 0, y: 0 };            // drag / keyboard tilt, in g
-  const keys = {};
+  const virt = { x: 0, y: 0 }, keys = {};
   const bubbles = Array.from({ length: 14 }, () => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 0.68; return { x: Math.cos(a) * r, y: Math.sin(a) * r, s: 0.03 + Math.random() * 0.05 }; });
 
-  // ---------- sizing & background ----------
+  // ================= sound =================
+  let ac = null;
+  function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); }
+  function tone(f, d, type = 'sine', vol = 0.2, when = 0) {
+    if (!ac || !P.sound) return;
+    const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  }
+  function noise(d, vol, freq) {
+    if (!ac || !P.sound) return;
+    const n = ac.sampleRate * d, buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol; s.buffer = buf; s.connect(f).connect(g).connect(ac.destination); s.start();
+  }
+  const sfx = {
+    chime() { tone(880, 0.14, 'sine', 0.18); tone(1320, 0.22, 'sine', 0.16, 0.09); },
+    bump() { tone(110, 0.12, 'triangle', 0.35); },
+    slop() { noise(0.35, 0.35, 1400); },
+    crash() { noise(0.9, 0.5, 900); tone(70, 0.35, 'triangle', 0.4); },
+    tick() { tone(660, 0.08, 'square', 0.08); },
+    go() { tone(990, 0.25, 'square', 0.1); },
+    end() { tone(392, 0.2, 'triangle', 0.2); tone(262, 0.4, 'triangle', 0.2, 0.18); },
+  };
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  // ================= layout =================
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     W = innerWidth; H = innerHeight;
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     T = Math.round($('top').getBoundingClientRect().bottom) + 4;
-    B = Math.round($('bottom').getBoundingClientRect().top) + 14;
+    B = Math.round($('bottom').getBoundingClientRect().top) - 4;
     if (B - T < 200) { T = 0; B = H; }
-    R = Math.min(W, B - T) * 0.12;
+    SZ = Math.min(W, B - T);
+    R = SZ * 0.12;
     lv.width = 52 * DPR; lv.height = 52 * DPR; lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    $('countdown').style.top = T + 'px'; $('countdown').style.height = (B - T) + 'px';
+    $('hint').style.top = (B - 40) + 'px';
     buildWood();
-    if (!glass.x) { glass.x = W / 2; glass.y = (T + B) / 2; }
+    if (!glass.x) centerGlass();
     glass.x = Math.min(Math.max(glass.x, R + 10), W - R - 10);
     glass.y = Math.min(Math.max(glass.y, T + R + 10), B - R - 10);
   }
+  function centerGlass() { Object.assign(glass, { x: W / 2, y: (T + B) / 2, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0, tipped: false }); }
   function buildWood() {
     wood = document.createElement('canvas');
     wood.width = W * DPR; wood.height = H * DPR;
@@ -163,28 +368,26 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     const bg = g.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#2a1810'); bg.addColorStop(0.5, '#1e110c'); bg.addColorStop(1, '#140b08');
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    // grain
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 90; i++) {
-      const x0 = Math.random() * W;
-      g.strokeStyle = `rgba(${Math.random() < .5 ? '90,52,30' : '10,5,3'},${0.08 + Math.random() * 0.12})`;
-      g.lineWidth = 0.5 + Math.random() * 2.5;
+      const x0 = rnd() * W;
+      g.strokeStyle = `rgba(${rnd() < .5 ? '90,52,30' : '10,5,3'},${0.08 + rnd() * 0.12})`;
+      g.lineWidth = 0.5 + rnd() * 2.5;
       g.beginPath(); g.moveTo(x0, -10);
       for (let y = 0; y <= H + 20; y += 40) g.lineTo(x0 + Math.sin(y / 140 + i) * 6 + (y / H) * 8, y);
       g.stroke();
     }
-    // lacquer sheen
-    const sh = g.createLinearGradient(0, H * 0.15, W, H * 0.6);
+    const sh = g.createLinearGradient(0, T, W, B);
     sh.addColorStop(0, 'rgba(255,220,170,0)'); sh.addColorStop(0.5, 'rgba(255,220,170,0.07)'); sh.addColorStop(1, 'rgba(255,220,170,0)');
     g.fillStyle = sh; g.fillRect(0, 0, W, H);
-    // brass rail (the tray edge)
-    g.strokeStyle = 'rgba(201,154,74,0.55)'; g.lineWidth = 3;
+    g.strokeStyle = 'rgba(201,154,74,0.6)'; g.lineWidth = 3;
     roundRect(g, 5, T + 2, W - 10, B - T - 4, 22); g.stroke();
     g.strokeStyle = 'rgba(255,230,180,0.15)'; g.lineWidth = 1;
     roundRect(g, 8, T + 5, W - 16, B - T - 10, 19); g.stroke();
   }
   function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
-  // ---------- sensors ----------
+  // ================= sensors =================
   function onMotion(e) {
     const a = e.accelerationIncludingGravity;
     if (!a || a.x == null) return;
@@ -192,51 +395,48 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     sensor.x = a.x; sensor.y = a.y; sensor.z = a.z || 0;
   }
   function screenAngle() { const a = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0; return a * Math.PI / 180; }
-  // returns tilt pushing the glass, in units of g, in canvas axes (+x right, +y down)
   function sensorTilt() {
-    const k = 0.3; // low-pass to calm hand tremor
+    const k = 0.3;
     sensor.fx += (sensor.x - sensor.fx) * k; sensor.fy += (sensor.y - sensor.fy) * k;
     const t = screenAngle();
     const dx = sensor.fx * Math.cos(t) + sensor.fy * Math.sin(t);
     const dy = -sensor.fx * Math.sin(t) + sensor.fy * Math.cos(t);
-    // Android reports +9.8 on z when face up, iOS -9.8. sensor.sign normalises that.
-    let gx = -dx * sensor.sign / 9.81, gy = dy * sensor.sign / 9.81;
-    return { x: gx, y: gy };
+    return { x: -dx * sensor.sign / 9.81, y: dy * sensor.sign / 9.81 };
   }
   function zero() {
-    if (sensor.live) {
-      sensor.sign = sensor.z < -3 ? -1 : 1;
-      const t = sensorTilt();
-      base = { x: t.x, y: t.y };
-    }
+    if (sensor.live) { sensor.sign = sensor.z < -3 ? -1 : 1; const t = sensorTilt(); base = { x: t.x, y: t.y }; }
     virt.x = virt.y = 0;
   }
-  async function start() {
-    $('intro').hidden = true;
-    try {
-      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        const r = await DeviceMotionEvent.requestPermission();
-        if (r !== 'granted') throw new Error('denied');
-      }
-      addEventListener('devicemotion', onMotion);
-    } catch (e) {}
-    try { if (navigator.wakeLock) await navigator.wakeLock.request('screen'); } catch (e) {}
-    setTimeout(zero, 700);
-    setTimeout(() => { if (!sensor.live) $('hint').hidden = false; }, 1500);
+  let wakeLock = null;
+  async function ensureSensors() {
+    audio();
+    if (!sensor.on) {
+      sensor.on = true;
+      try {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          const r = await DeviceMotionEvent.requestPermission();
+          if (r !== 'granted') throw new Error('denied');
+        }
+        addEventListener('devicemotion', onMotion);
+      } catch (e) {}
+      setTimeout(() => { if (!sensor.live) $('hint').hidden = false; }, 1500);
+    }
+    try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
   }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && sensor.on) ensureSensors(); });
 
-  // ---------- drag / keyboard fallback ----------
+  // drag / keyboard fallback
   let drag = null;
   cv.addEventListener('pointerdown', e => { if (sensor.live) return; drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
   cv.addEventListener('pointermove', e => {
     if (!drag) return;
-    const s = Math.min(W, H) * 0.45, m = 0.5;
+    const s = SZ * 0.45, m = 0.5;
     virt.x = Math.max(-m, Math.min(m, (e.clientX - drag.x) / s));
     virt.y = Math.max(-m, Math.min(m, (e.clientY - drag.y) / s));
   });
   const endDrag = () => { drag = null; virt.x = virt.y = 0; };
   cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
-  addEventListener('keydown', e => { keys[e.key] = true; });
+  addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT') keys[e.key] = true; });
   addEventListener('keyup', e => { keys[e.key] = false; });
 
   function currentTilt() {
@@ -250,88 +450,138 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     return t;
   }
 
-  // ---------- physics ----------
+  // ================= physics =================
+  function eff() {
+    const lvl = mode === 'play' ? run.level : 0;
+    return { sens: P.sens * (1 + P.ramp * lvl), grip: Math.max(1, P.grip * Math.pow(1 - P.ramp, lvl)) };
+  }
   function step(dt, tilt) {
-    const G = Math.min(W, H) * 6 * P.sens;           // exaggerated gravity, px/s² per g
+    const E = eff();
+    const G = SZ * 6 * E.sens;
     const ax = tilt.x * G, ay = tilt.y * G;
     const drive = Math.hypot(tilt.x, tilt.y);
-    const muS = Math.sin(P.grip * Math.PI / 180);   // breakaway angle → static coefficient
+    const muS = Math.sin(E.grip * Math.PI / 180);
     let sp = Math.hypot(glass.vx, glass.vy);
     glass.pvx = glass.vx; glass.pvy = glass.vy;
 
     if (sp < 3) {
       if (drive <= muS) { glass.vx = glass.vy = 0; moving = false; }
-      else { glass.vx += ax * dt; glass.vy += ay * dt; moving = true; }   // breaks free with only sliding drag holding it
+      else { glass.vx += ax * dt; glass.vy += ay * dt; moving = true; }
     } else {
       moving = true;
       glass.vx += ax * dt; glass.vy += ay * dt;
       sp = Math.hypot(glass.vx, glass.vy);
-      const ref = G * 0.25;
-      const muK = P.slide / (1 + P.slick * sp / ref);     // slicker as it speeds up
+      const muK = P.slide / (1 + P.slick * sp / (G * 0.25));
       const dv = muK * G * dt;
-      if (sp <= dv) { glass.vx = glass.vy = 0; }
-      else { glass.vx -= glass.vx / sp * dv; glass.vy -= glass.vy / sp * dv; }
+      if (sp <= dv) { glass.vx = glass.vy = 0; } else { glass.vx -= glass.vx / sp * dv; glass.vy -= glass.vy / sp * dv; }
     }
-
     glass.x += glass.vx * dt; glass.y += glass.vy * dt;
 
     // rails
     const m = 10 + R, e = P.bounce;
-    let hit = 0;
-    if (glass.x < m) { glass.x = m; hit = Math.max(hit, -glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
-    if (glass.x > W - m) { glass.x = W - m; hit = Math.max(hit, glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
-    if (glass.y < T + m) { glass.y = T + m; hit = Math.max(hit, -glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
-    if (glass.y > B - m) { glass.y = B - m; hit = Math.max(hit, glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
-    const thresh = Math.min(W, H) * 0.9;
-    if (hit > thresh && spill < 100) { spill = Math.min(100, spill + (hit - thresh) / thresh * 25); flash = 1; navigator.vibrate?.(30); }
+    let hit = 0, hx = 0, hy = 0;
+    const wall = (v, px, py) => { if (v > hit) { hit = v; hx = px; hy = py; } };
+    if (glass.x < m) { glass.x = m; wall(-glass.vx, glass.x - R, glass.y); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
+    if (glass.x > W - m) { glass.x = W - m; wall(glass.vx, glass.x + R, glass.y); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
+    if (glass.y < T + m) { glass.y = T + m; wall(-glass.vy, glass.x, glass.y - R); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    if (glass.y > B - m) { glass.y = B - m; wall(glass.vy, glass.x, glass.y + R); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    onRail = glass.x <= m + 1 || glass.x >= W - m - 1 || glass.y <= T + m + 1 || glass.y >= B - m - 1;
 
-    // slosh: the beer surface lags the glass's acceleration (spring-damper)
+    const v = hit / SZ; // rail hit speed in tray-widths per second
+    if (v > P.knock) { knockOver(hx, hy); }
+    else if (v > 0.6) {
+      const loss = (v - 0.6) * 16 * P.slop;
+      spillBeer(loss, hx, hy, loss / 10);
+      flash = Math.min(1, 0.4 + loss / 20); sfx.slop(); buzz(40);
+    } else if (v > 0.25) { sfx.bump(); }
+
+    // leaning on the rail dribbles beer over the edge
+    if (onRail && beer > 0) spillBeer(2.5 * dt, glass.x, glass.y, 0, true);
+
+    // slosh: the beer surface lags the glass's acceleration
     let gax = (glass.vx - glass.pvx) / dt, gay = (glass.vy - glass.pvy) / dt;
     const cap = G * 3; gax = Math.max(-cap, Math.min(cap, gax)); gay = Math.max(-cap, Math.min(cap, gay));
-    const k = 140, c = 7, s = 0.012 * R / 4;
+    const k = 140, c = 7, s = 0.003 * R;
     glass.svx += (-k * glass.sx - c * glass.svx - gax * s) * dt;
     glass.svy += (-k * glass.sy - c * glass.svy - gay * s) * dt;
     glass.sx += glass.svx * dt; glass.sy += glass.svy * dt;
     const lim = R * 0.22, so = Math.hypot(glass.sx, glass.sy);
-    if (so > lim) { glass.sx *= lim / so; glass.sy *= lim / so; }
+    if (so > lim) { glass.sx *= lim / so; glass.sy *= lim / so; if (beer > 0) spillBeer(6 * dt, glass.x + glass.sx / so * R, glass.y + glass.sy / so * R, 0, true); }
 
     flash = Math.max(0, flash - dt * 2.5);
-    return { muS, G };
+    return muS;
+  }
+  let dribbleAcc = 0;
+  function spillBeer(amount, x, y, size, dribble) {
+    beer = Math.max(0, beer - amount);
+    if (dribble) { dribbleAcc += amount; if (dribbleAcc < 1.5) return; dribbleAcc = 0; size = 0.15; }
+    addPuddle(x, y, R * (0.25 + Math.min(1.2, size)));
+  }
+  function addPuddle(x, y, r) {
+    const blobs = Array.from({ length: 4 }, () => ({ dx: (Math.random() - .5) * r, dy: (Math.random() - .5) * r, r: r * (0.4 + Math.random() * 0.5) }));
+    puddles.push({ x, y, blobs }); if (puddles.length > 60) puddles.shift();
+  }
+  function knockOver(x, y) {
+    if (glass.tipped) return;
+    glass.tipped = true; beer = 0; flash = 1;
+    const dx = x - glass.x, dy = y - glass.y, d = Math.hypot(dx, dy) || 1;
+    for (let i = 0; i < 5; i++) addPuddle(glass.x + dx / d * R * (1 + i * 0.5), glass.y + dy / d * R * (1 + i * 0.5), R * (1.2 - i * 0.12));
+    glass.tipDir = Math.atan2(dy, dx);
+    glass.vx = glass.vy = 0;
+    sfx.crash(); buzz([80, 40, 120]);
   }
 
-  // ---------- drawing ----------
+  // ================= drawing =================
   function draw(tilt) {
     ctx.drawImage(wood, 0, 0, W, H);
-    if (flash > 0) { ctx.fillStyle = `rgba(217,83,79,${flash * 0.18})`; ctx.fillRect(0, 0, W, H); }
+    for (const p of puddles) {
+      ctx.fillStyle = 'rgba(214,140,30,0.28)';
+      for (const b of p.blobs) { ctx.beginPath(); ctx.arc(p.x + b.dx, p.y + b.dy, b.r, 0, 6.283); ctx.fill(); }
+    }
+    if (flash > 0) { ctx.fillStyle = `rgba(217,83,79,${flash * 0.16})`; ctx.fillRect(0, T, W, B - T); }
     const { x, y } = glass;
-    // shadow shifts with tilt, as if lit from straight above
+    if (glass.tipped) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(glass.tipDir);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(8, 8, R * 1.5, R * 0.95, 0, 0, 6.283); ctx.fill();
+      const gg = ctx.createLinearGradient(-R * 1.5, 0, R * 1.5, 0);
+      gg.addColorStop(0, 'rgba(220,235,240,0.25)'); gg.addColorStop(1, 'rgba(220,235,240,0.08)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(0, 0, R * 1.45, R * 0.92, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = 'rgba(235,245,248,0.5)'; ctx.lineWidth = Math.max(2, R * 0.06);
+      ctx.beginPath(); ctx.ellipse(R * 1.15, 0, R * 0.3, R * 0.9, 0, 0, 6.283); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    const full = beer / 100;
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.ellipse(x + 6 - tilt.x * 20, y + 9 - tilt.y * 20, R * 1.04, R * 1.04, 0, 0, 6.283); ctx.fill();
-    // glass base
-    ctx.fillStyle = 'rgba(220,235,240,0.10)';
+    ctx.fillStyle = 'rgba(220,235,240,0.12)';
     ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fill();
-    // beer
-    const bx = x + glass.sx * 0.5, by = y + glass.sy * 0.5;
-    const beer = ctx.createRadialGradient(bx - R * 0.2, by - R * 0.2, R * 0.1, x, y, R * 0.9);
-    beer.addColorStop(0, '#f6c04a'); beer.addColorStop(0.7, '#d48a1c'); beer.addColorStop(1, '#8f4d0e');
-    ctx.fillStyle = beer; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, 6.283); ctx.fill();
-    // foam head, sloshing
-    const fx = x + glass.sx, fy = y + glass.sy, fr = R * 0.74;
-    const foam = ctx.createRadialGradient(fx - fr * 0.3, fy - fr * 0.3, fr * 0.1, fx, fy, fr);
-    foam.addColorStop(0, '#fffaf0'); foam.addColorStop(0.75, '#f3e7cf'); foam.addColorStop(1, '#d9c39c');
-    ctx.fillStyle = foam; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 6.283); ctx.fill();
-    ctx.fillStyle = 'rgba(190,160,115,0.35)';
-    for (const b of bubbles) { ctx.beginPath(); ctx.arc(fx + b.x * fr, fy + b.y * fr, b.s * R, 0, 6.283); ctx.fill(); }
-    // rim
+    if (full > 0) {
+      ctx.globalAlpha = 0.25 + 0.75 * full;
+      const bx = x + glass.sx * 0.5, by = y + glass.sy * 0.5;
+      const bg = ctx.createRadialGradient(bx - R * 0.2, by - R * 0.2, R * 0.1, x, y, R * 0.9);
+      bg.addColorStop(0, '#f6c04a'); bg.addColorStop(0.7, '#d48a1c'); bg.addColorStop(1, '#8f4d0e');
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, 6.283); ctx.fill();
+      const fr = R * 0.74 * Math.max(0, (full - 0.15) / 0.85);
+      if (fr > 2) {
+        ctx.globalAlpha = Math.min(1, full * 1.4);
+        const fx = x + glass.sx, fy = y + glass.sy;
+        const fg = ctx.createRadialGradient(fx - fr * 0.3, fy - fr * 0.3, fr * 0.1, fx, fy, fr);
+        fg.addColorStop(0, '#fffaf0'); fg.addColorStop(0.75, '#f3e7cf'); fg.addColorStop(1, '#d9c39c');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgba(190,160,115,0.35)';
+        for (const b of bubbles) { ctx.beginPath(); ctx.arc(fx + b.x * fr, fy + b.y * fr, b.s * fr * 1.3, 0, 6.283); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.lineWidth = Math.max(2, R * 0.06);
     ctx.strokeStyle = 'rgba(235,245,248,0.45)';
     ctx.beginPath(); ctx.arc(x, y, R * 0.95, 0, 6.283); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, R * 0.035);
     ctx.beginPath(); ctx.arc(x, y, R * 0.95, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
   }
-
   function drawLevel(tilt, muS) {
-    const c = 26, rr = 23, scale = rr / 0.35; // ring edge = 0.35 g ≈ 20°
+    const c = 26, rr = 23, scale = rr / 0.35;
     lctx.clearRect(0, 0, 52, 52);
     lctx.strokeStyle = 'rgba(201,154,74,0.6)'; lctx.lineWidth = 1.5;
     lctx.beginPath(); lctx.arc(c, c, rr, 0, 6.283); lctx.stroke();
@@ -342,49 +592,219 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     lctx.beginPath(); lctx.arc(c + dx, c + dy, 5.5, 0, 6.283); lctx.fill();
   }
 
-  // ---------- HUD ----------
-  const elState = $('state'), elTilt = $('tilt'), elSpeed = $('speed'), elSpill = $('spillbar'), elSpillPct = $('spillpct');
-  let hudT = 0;
-  function hud(tilt) {
-    const deg = Math.asin(Math.min(1, Math.hypot(tilt.x, tilt.y))) * 180 / Math.PI;
-    elTilt.textContent = deg.toFixed(1) + '°';
-    elSpeed.textContent = Math.round(Math.hypot(glass.vx, glass.vy) / Math.min(W, H) * 100);
-    elSpill.style.width = spill + '%'; elSpillPct.textContent = Math.round(spill) + '%';
-    const st = spill >= 100 ? 'spilled' : moving ? 'slide' : 'hold';
-    elState.className = 'chip' + (st === 'hold' ? '' : ' ' + st);
-    elState.textContent = st === 'spilled' ? 'Spilled' : st === 'slide' ? 'Sliding' : 'Holding';
+  // ================= HUD =================
+  const el = { who: $('who'), clock: $('clock'), bar: $('beerbar'), pct: $('beerpct'), meter: $('meter'), chalText: $('chalText'), chalLab: $('chalLab'), chalNext: $('chalNext'), chalBar: $('chalBar'), chal: $('chal') };
+  function hud() {
+    el.clock.innerHTML = run.t.toFixed(1) + '<small>s</small>';
+    el.bar.style.width = beer + '%';
+    el.pct.textContent = Math.ceil(beer) + '%';
+    el.meter.classList.toggle('low', beer < 25);
+    if (mode === 'play' && pace() > 0) {
+      const left = Math.max(0, run.nextCh - run.t);
+      el.chalBar.style.width = (100 * left / pace()) + '%';
+      el.chalNext.textContent = run.chCount ? 'Next in ' + Math.ceil(left) + 's' : '';
+    }
+  }
+  const pace = () => (PACES.find(p => p.id === S.pace) || PACES[2]).s;
+  function drawCard() {
+    if (!deck.length) { deck = CHALLENGES.slice(); for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; } }
+    return deck.pop();
+  }
+  function newChallenge() {
+    run.chCount++; run.level = run.chCount;
+    el.chalLab.textContent = 'Challenge ' + run.chCount;
+    el.chalText.textContent = drawCard();
+    el.chal.classList.remove('fresh'); void el.chal.offsetWidth; el.chal.classList.add('fresh');
+    sfx.chime(); buzz(60);
+  }
+  function setChal(label, text) { el.chalLab.textContent = label; el.chalText.textContent = text; el.chalNext.textContent = ''; el.chalBar.style.width = '0'; }
+
+  // ================= flow =================
+  const overlays = ['menu', 'handoff', 'result', 'standings'];
+  function show(id) { for (const o of overlays) $(o).hidden = o !== id; }
+  function setMode(m) {
+    mode = m;
+    $('practiceBar').hidden = m !== 'practice';
+    $('chal').hidden = m === 'practice';
+    $('endBtn').hidden = !(m === 'play' || m === 'countdown');
+    $('countdown').hidden = m !== 'countdown';
+  }
+  function resetTable() { beer = 100; puddles.length = 0; centerGlass(); run.t = 0; run.level = 0; run.chCount = 0; flash = 0; }
+
+  function buildMenu() {
+    const cs = $('countSeg'); cs.innerHTML = '';
+    for (let n = 1; n <= 5; n++) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.id = 'count' + n;
+      b.setAttribute('aria-pressed', S.count === n); b.onclick = () => { S.count = n; saveS(); buildMenu(); };
+      cs.appendChild(b);
+    }
+    const nm = $('names'); nm.innerHTML = '';
+    for (let i = 0; i < S.count; i++) {
+      const l = document.createElement('label'); l.innerHTML = `<span>${i + 1}</span>`;
+      const inp = document.createElement('input'); inp.id = 'name' + i; inp.maxLength = 16; inp.placeholder = 'Player ' + (i + 1); inp.value = S.names[i] || ''; inp.autocomplete = 'off';
+      inp.oninput = () => { S.names[i] = inp.value; saveS(); };
+      inp.onkeydown = e => { if (e.key === 'Enter') { const nx = $('name' + (i + 1)); nx ? nx.focus() : inp.blur(); } };
+      l.appendChild(inp); nm.appendChild(l);
+    }
+    const ps = $('paceSeg'); ps.innerHTML = '';
+    for (const p of PACES) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.id = 'pace-' + p.id;
+      b.setAttribute('aria-pressed', S.pace === p.id); b.onclick = () => { S.pace = p.id; saveS(); buildMenu(); };
+      ps.appendChild(b);
+    }
+    $('paceNote').textContent = (PACES.find(p => p.id === S.pace) || PACES[2]).note;
+  }
+  function goMenu() { setMode('menu'); resetTable(); el.who.textContent = 'Barkeep'; setChal('Get ready', 'Hold the tray level.'); buildMenu(); show('menu'); }
+
+  function startGame() {
+    game.players = Array.from({ length: S.count }, (_, i) => ({ name: (S.names[i] || '').trim() || 'Player ' + (i + 1), total: 0, last: 0 }));
+    game.gameNo = 1; startRound();
+  }
+  function startRound() { game.turn = 0; game.scores = []; handoff(); }
+  function handoff() {
+    setMode('handoff'); resetTable();
+    const p = game.players[game.turn];
+    el.who.textContent = p.name;
+    $('hoEyebrow').textContent = `Game ${game.gameNo} · Turn ${game.turn + 1} of ${game.players.length}`;
+    $('hoName').textContent = p.name;
+    setChal('Get ready', 'Hold the tray level.');
+    show('handoff');
+  }
+  async function ready() {
+    show(null);
+    await ensureSensors();
+    resetTable(); setMode('countdown'); run.cdStart = performance.now(); lastCd = -1;
+    setChal('Get ready', 'Hold it level while it counts down.');
+  }
+  let lastCd = -1;
+  function countdownTick(now) {
+    const e = (now - run.cdStart) / 1000;
+    const n = 3 - Math.floor(e);
+    const cd = $('countdown');
+    if (n !== lastCd) { lastCd = n; if (n > 0) sfx.tick(); }
+    if (e < 3) cd.textContent = n;
+    else if (e < 3.05) { zero(); }
+    if (e >= 3) {
+      sfx.go(); setMode('play'); run.t = 0;
+      if (pace() > 0) { run.nextCh = 1.5; setChal('Steady…', 'First challenge coming up.'); }
+      else setChal('No challenges', 'Just keep the beer in the glass.');
+      showGo();
+    }
+  }
+  function showGo() { const cd = $('countdown'); cd.hidden = false; cd.textContent = 'Go!'; setTimeout(() => { if (mode !== 'countdown') cd.hidden = true; }, 600); }
+
+  function endTurn(reason) {
+    if (mode !== 'play') return;
+    setMode('over');
+    run.reason = reason;
+    const p = game.players[game.turn];
+    const score = Math.round(run.t * 10) / 10;
+    p.last = score; p.total = Math.round((p.total + score) * 10) / 10;
+    game.scores.push({ p, score });
+    if (reason !== 'quit') sfx.end();
+    setTimeout(showResult, reason === 'knock' ? 1200 : 700);
+  }
+  function showResult() {
+    setMode('result');
+    const p = game.players[game.turn];
+    $('rsEyebrow').textContent = `Game ${game.gameNo} · Turn ${game.turn + 1} of ${game.players.length}`;
+    $('rsName').textContent = p.name;
+    $('rsTime').innerHTML = p.last.toFixed(1) + '<small>s</small>';
+    const r = $('rsReason');
+    r.className = 'reason' + (run.reason === 'dry' ? ' dry' : run.reason === 'quit' ? ' quit' : '');
+    r.textContent = run.reason === 'knock' ? 'Knocked it over' : run.reason === 'dry' ? 'Glass ran dry' : 'Ended early';
+    $('rsDetail').textContent = pace() > 0 ? `Survived ${Math.max(0, run.chCount - 1)} challenge${run.chCount - 1 === 1 ? '' : 's'}.` : '';
+    const last = game.turn === game.players.length - 1;
+    $('rsNext').textContent = last ? (game.players.length > 1 ? 'See standings' : 'See result') : 'Pass to ' + game.players[game.turn + 1].name;
+    show('result');
+  }
+  function afterResult() {
+    if (game.turn < game.players.length - 1) { game.turn++; handoff(); }
+    else showStandings();
+  }
+  function showStandings() {
+    setMode('standings');
+    const ranked = game.players.slice().sort((a, b) => b.total - a.total || b.last - a.last);
+    const bestGame = Math.max(...game.players.map(p => p.last));
+    const gw = game.players.filter(p => p.last === bestGame);
+    $('stEyebrow').textContent = game.players.length > 1 ? 'Standings' : 'Your result';
+    $('stTitle').textContent = 'After game ' + game.gameNo;
+    $('stWinner').innerHTML = '';
+    const w = $('stWinner');
+    if (game.players.length > 1) {
+      const b = document.createElement('b'); b.textContent = gw.map(p => p.name).join(' & ');
+      w.append(b, document.createTextNode(` ${gw.length > 1 ? 'tie' : 'wins'} game ${game.gameNo} with ${bestGame.toFixed(1)} s.`));
+    } else {
+      const best = game.players[0].best = Math.max(game.players[0].best || 0, bestGame);
+      w.textContent = `${bestGame.toFixed(1)} s this game. Best so far: ${best.toFixed(1)} s.`;
+    }
+    $('stGameHead').textContent = 'Game ' + game.gameNo;
+    const tb = $('stBody'); tb.innerHTML = '';
+    let rank = 0, prev = null;
+    ranked.forEach((p, i) => {
+      if (p.total !== prev) { rank = i + 1; prev = p.total; }
+      const tr = document.createElement('tr'); if (rank === 1) tr.className = 'lead';
+      const cells = [[rank, 'rank'], [p.name, ''], [p.last.toFixed(1), 'num'], [p.total.toFixed(1), 'num']];
+      for (const [v, c] of cells) { const td = document.createElement('td'); td.textContent = v; if (c) td.className = c; tr.appendChild(td); }
+      tb.appendChild(tr);
+    });
+    $('nextGameBtn').textContent = 'Play game ' + (game.gameNo + 1);
+    show('standings');
   }
 
-  // ---------- loop ----------
-  let last = performance.now();
+  // ================= loop =================
+  let last = performance.now(), hudT = 0, refillAt = 0;
   function frame(now) {
     const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
     const tilt = currentTilt();
-    const { muS } = step(dt, tilt);
+    let muS = Math.sin(eff().grip * Math.PI / 180);
+    if (mode === 'countdown') countdownTick(now);
+    if (mode === 'play' || mode === 'practice') {
+      if (!glass.tipped) muS = step(dt, tilt);
+      run.t += dt;
+      if (mode === 'play') {
+        if (pace() > 0 && run.t >= run.nextCh) { newChallenge(); run.nextCh = run.t + pace(); }
+        if (glass.tipped) endTurn('knock');
+        else if (beer <= 0) endTurn('dry');
+      } else if ((glass.tipped || beer <= 0) && !refillAt) refillAt = now + 1400;
+      if (refillAt && now > refillAt) { refillAt = 0; resetTable(); }
+    }
     draw(tilt);
     drawLevel(tilt, muS);
-    if (now - hudT > 80) { hud(tilt); hudT = now; }
+    if (now - hudT > 80) { hud(); hudT = now; }
     requestAnimationFrame(frame);
   }
 
-  // ---------- controls ----------
-  const fmt = { sens: v => v.toFixed(2) + '×', grip: v => v.toFixed(1) + '°', slide: v => v.toFixed(3), slick: v => v.toFixed(1), bounce: v => Math.round(v * 100) + '%' };
+  // ================= controls =================
+  const fmt = { sens: v => v.toFixed(2) + '×', grip: v => v.toFixed(1) + '°', slide: v => v.toFixed(3), slick: v => v.toFixed(1), bounce: v => Math.round(v * 100) + '%', knock: v => v.toFixed(1), slop: v => v.toFixed(1) + '×', ramp: v => Math.round(v * 100) + '%' };
   function syncUI() {
     for (const k of Object.keys(fmt)) { $(k).value = P[k]; $(k + 'Out').textContent = fmt[k](+P[k]); }
-    $('flipX').checked = P.flipX; $('flipY').checked = P.flipY;
+    for (const k of ['sound', 'flipX', 'flipY']) $(k).checked = P[k];
   }
-  for (const k of Object.keys(fmt)) $(k).addEventListener('input', e => { P[k] = +e.target.value; $(k + 'Out').textContent = fmt[k](P[k]); save(); });
-  $('flipX').addEventListener('change', e => { P.flipX = e.target.checked; save(); });
-  $('flipY').addEventListener('change', e => { P.flipY = e.target.checked; save(); });
-  $('defaultsBtn').addEventListener('click', () => { P = { ...DEF }; save(); syncUI(); });
-  $('tuneBtn').addEventListener('click', () => { $('sheet').hidden = false; });
-  $('closeTune').addEventListener('click', () => { $('sheet').hidden = true; });
-  $('zeroBtn').addEventListener('click', zero);
-  $('resetBtn').addEventListener('click', () => { Object.assign(glass, { x: W / 2, y: (T + B) / 2, vx: 0, vy: 0, sx: 0, sy: 0, svx: 0, svy: 0 }); spill = 0; });
-  $('startBtn').addEventListener('click', start);
+  for (const k of Object.keys(fmt)) $(k).addEventListener('input', e => { P[k] = +e.target.value; $(k + 'Out').textContent = fmt[k](P[k]); saveP(); });
+  for (const k of ['sound', 'flipX', 'flipY']) $(k).addEventListener('change', e => { P[k] = e.target.checked; saveP(); });
+  $('defaultsBtn').onclick = () => { P = { ...DEF }; saveP(); syncUI(); };
+  $('tuneBtn').onclick = $('tuneBtn2').onclick = () => { $('sheet').hidden = false; };
+  $('closeTune').onclick = () => { $('sheet').hidden = true; };
+  $('zeroBtn').onclick = zero;
+  $('refillBtn').onclick = () => { refillAt = 0; resetTable(); };
+  $('menuBtn').onclick = goMenu;
+  $('startBtn').onclick = () => { ensureSensors(); startGame(); };
+  $('practiceBtn').onclick = async () => {
+    show(null); await ensureSensors(); resetTable(); setMode('practice'); el.who.textContent = 'Practice';
+    setTimeout(zero, 600);
+  };
+  $('readyBtn').onclick = ready;
+  $('rsNext').onclick = afterResult;
+  $('nextGameBtn').onclick = () => { game.gameNo++; startRound(); };
+  $('newPlayersBtn').onclick = goMenu;
+  $('endBtn').onclick = () => {
+    if (mode === 'countdown') { handoff(); return; }
+    endTurn('quit');
+  };
 
   addEventListener('resize', resize);
-  resize(); syncUI();
+  resize(); syncUI(); buildMenu();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
   requestAnimationFrame(frame);
 })();
