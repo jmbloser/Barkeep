@@ -48,6 +48,18 @@ body{font-family:var(--f-body);overflow:hidden;touch-action:none;-webkit-user-se
 .cbar i{display:block;height:100%;width:0;background:var(--brass)}
 #chal.fresh #chalText{animation:pop .6s ease-out}
 @keyframes pop{0%{color:#1b100c;background:var(--brass);transform:scale(1.04)}100%{color:var(--ink);background:transparent;transform:none}}
+.challeft{display:flex;gap:10px;align-items:baseline;min-width:0}
+#chalProg{color:var(--brass)}
+#chalProg.done{color:var(--hold)}
+#quip{position:absolute;left:16px;right:16px;display:flex;justify-content:center;pointer-events:none;opacity:0;transform:translateY(8px) scale(.96);transition:opacity .2s,transform .2s}
+#quip.show{opacity:1;transform:none}
+#quip span{font-family:var(--f-display);font-size:30px;line-height:1.1;color:#1b100c;background:var(--foam);padding:10px 18px;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.45);text-align:center;max-width:100%}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:19px;padding:4px 0}
+.toggle small{display:block;font-size:15px;color:var(--ink-dim)}
+.switch{flex:none;width:58px;height:34px;min-width:0;padding:0;border-radius:17px;position:relative;background:rgba(255,255,255,.1)}
+.switch::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:var(--ink-dim);transition:transform .15s,background .15s}
+.switch[aria-checked="true"]{background:var(--brass);border-color:var(--brass)}
+.switch[aria-checked="true"]::after{transform:translateX(24px);background:#1b100c}
 #practiceBar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
 button{font:600 16px/1 var(--f-body);letter-spacing:.05em;color:var(--ink);background:var(--wash);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;min-width:84px}
@@ -128,11 +140,12 @@ tr.lead td{background:rgba(201,154,74,.1)}
   </div>
 
   <div id="countdown" hidden></div>
+  <div id="quip" aria-live="polite"><span></span></div>
   <div id="hint" class="hint" hidden>No tilt sensor here. Drag on the bar to tilt it.</div>
 
   <div id="bottom" class="bottom">
     <div id="chal">
-      <div class="chalhead"><span id="chalLab">Get ready</span><span id="chalNext"></span></div>
+      <div class="chalhead"><span class="challeft"><span id="chalLab">Get ready</span><span id="chalProg"></span></span><span id="chalNext"></span></div>
       <div id="chalText">Hold the tray level.</div>
       <div class="cbar"><i id="chalBar"></i></div>
     </div>
@@ -162,13 +175,19 @@ tr.lead td{background:rgba(201,154,74,.1)}
         <div id="paceSeg" class="seg" role="group" aria-label="Challenge pace"></div>
         <span class="dim" id="paceNote"></span>
       </div>
+      <div class="field">
+        <span class="eyebrow">Voice &amp; checking</span>
+        <div class="toggle"><span>Read challenges aloud<small>So the judges hear the task too.</small></span><button type="button" class="switch" role="switch" id="vRead" aria-label="Read challenges aloud"></button></div>
+        <div class="toggle"><span>Spill reactions<small>“Oh no!” and friends, spoken out loud.</small></span><button type="button" class="switch" role="switch" id="vReact" aria-label="Spill reactions"></button></div>
+        <div class="toggle"><span>Check challenges<small>Sensors spot spins, jumps, steps and squats. +3 s each.</small></span><button type="button" class="switch" role="switch" id="vCheck" aria-label="Check challenges with sensors"></button></div>
+      </div>
       <details>
         <summary>How it plays</summary>
         <ul>
           <li>Each player gets one turn per game. Your score is how many seconds you keep beer in the glass.</li>
           <li>Rest the phone flat on your palm. Hold it level through the 3-2-1 so it can find level.</li>
           <li>Rail bumps slop beer. Leaning on the rail dribbles it out. A hard hit knocks the glass over and ends your turn.</li>
-          <li>A new challenge pops up at the bottom every few seconds. Everyone else is the judge.</li>
+          <li>A new challenge pops up at the bottom every few seconds and is read aloud. Spins, jumps, steps and squats are checked by the phone and earn 3 bonus seconds. The rest are up to the judges.</li>
           <li>The bar gets slicker with every challenge, so nobody lasts forever.</li>
         </ul>
       </details>
@@ -248,40 +267,51 @@ tr.lead td{background:rgba(201,154,74,.1)}
 <script>
 (() => {
   // ================= data =================
+  // [text, check, target, unit, spoken]
+  // checks: spin (degrees turned), jump (free-fall moments), step (footsteps), dip (up/down moves), busy (seconds of vigorous motion), null (judges decide)
   const CHALLENGES = [
-    'Spin around 360°',
-    'Jump off the ground 3 times',
-    'Pass the phone between hands 3 times',
-    'Pass the phone under one of your legs',
-    'Salsa dance for 3 seconds',
-    'Do 3 squats',
-    'Stand on one foot for 5 seconds',
-    'Hop on one foot 3 times',
-    'Raise the tray over your head for 3 seconds',
-    'Lower the tray to your knees and back up',
-    'Switch hands',
-    'Take 5 steps backward',
-    'Sidestep 4 steps left, then 4 right',
-    'Walk heel-to-toe for 5 steps',
-    'Sit down on the floor and stand back up',
-    'Kneel on one knee, then stand',
-    'March in place with high knees for 5 steps',
-    'Spin around twice the other way',
-    'Moonwalk 3 steps',
-    'Do the twist for 3 seconds',
-    'Touch your toes with your free hand',
-    'Take a deep bow to your audience',
-    'Hold the tray out at arm’s length for 3 seconds',
-    'High-five someone with your free hand',
-    'Walk a full lap around the nearest chair',
-    'Shout “Order up!” in your best waiter voice',
-    'Close your eyes for 3 seconds',
-    'Do a lunge on each leg',
-    'Balance on your tiptoes for 5 seconds',
-    'Wave to the crowd like royalty for 3 seconds',
-    'Walk to the nearest door and back',
-    'Cross your legs and uncross them while standing',
-  ];
+    ['Spin around 360°', 'spin', 330, '360°', 'Spin around three sixty!'],
+    ['Jump off the ground 3 times', 'jump', 3, 'Jumps'],
+    ['Pass the phone between hands 3 times', null],
+    ['Pass the phone under one of your legs', 'dip', 1, 'Dips'],
+    ['Salsa dance for 3 seconds', 'busy', 2.5, 'Dancing'],
+    ['Do 3 squats', 'dip', 3, 'Squats'],
+    ['Stand on one foot for 5 seconds', null],
+    ['Hop on one foot 3 times', 'jump', 3, 'Hops'],
+    ['Raise the tray over your head for 3 seconds', 'dip', 1, 'Lifts'],
+    ['Lower the tray to your knees and back up', 'dip', 1, 'Dips'],
+    ['Switch hands', null],
+    ['Take 5 steps backward', 'step', 5, 'Steps'],
+    ['Sidestep 4 steps left, then 4 right', 'step', 6, 'Steps'],
+    ['Walk heel-to-toe for 5 steps', 'step', 4, 'Steps'],
+    ['Sit down on the floor and stand back up', 'dip', 1, 'Dips'],
+    ['Kneel on one knee, then stand', 'dip', 1, 'Dips'],
+    ['March in place with high knees for 5 steps', 'step', 5, 'Steps'],
+    ['Spin around twice the other way', 'spin', 690, '720°', 'Spin around twice, the other way!'],
+    ['Moonwalk 3 steps', null],
+    ['Do the twist for 3 seconds', 'busy', 2.5, 'Twisting'],
+    ['Touch your toes with your free hand', 'dip', 1, 'Dips'],
+    ['Take a deep bow to your audience', 'dip', 1, 'Bows'],
+    ['Hold the tray out at arm’s length for 3 seconds', null],
+    ['High-five someone with your free hand', null],
+    ['Walk a full lap around the nearest chair', 'step', 8, 'Steps'],
+    ['Shout “Order up!” in your best waiter voice', null, 0, '', 'Shout order up, in your best waiter voice!'],
+    ['Close your eyes for 3 seconds', null],
+    ['Do a lunge on each leg', 'dip', 2, 'Lunges'],
+    ['Balance on your tiptoes for 5 seconds', null],
+    ['Wave to the crowd like royalty for 3 seconds', null],
+    ['Walk to the nearest door and back', 'step', 8, 'Steps'],
+    ['Cross your legs and uncross them while standing', null],
+  ].map(([text, check, n, unit, say]) => ({ text, check, n, unit, say: say || text }));
+  const QUIPS = {
+    spill: ['Oh no!', 'Aww, man!', 'Whoa, whoa, whoa!', 'Cleanup on aisle five!', 'That’s coming out of your tips!', 'Easy, tiger!', 'Somebody get a mop!', 'Not the good stuff!', 'My beer!', 'Yikes!', 'Slow down, cowboy!', 'That was a full pour!'],
+    saved: ['I saved a bit!', 'Still got some!', 'Phew, close one!', 'Most of it stayed in!', 'Waste not, want not!'],
+    low: ['Running on fumes!', 'Barely a sip left!', 'Careful, that’s the last of it!'],
+    knock: ['Nooo!', 'Man down!', 'Well, that’s a wrap!', 'And it’s gone!', 'Timber!', 'That one’s going on your tab!', 'Somebody call a mop!'],
+    dry: ['Bone dry!', 'Last call!', 'Empty! Who’s buying the next round?'],
+    nailed: ['Nailed it!', 'Smooth moves!', 'Look at you go!', 'Nice!', 'Bonus!'],
+  };
+  const BONUS = 3; // seconds added for each sensor-confirmed challenge
   const PACES = [
     { id: 'off', label: 'Off', s: 0, note: 'No challenges. Just carry the pint.' },
     { id: 'easy', label: 'Easy', s: 10, note: 'A new challenge every 10 seconds.' },
@@ -289,10 +319,11 @@ tr.lead td{background:rgba(201,154,74,.1)}
     { id: 'frantic', label: 'Frantic', s: 4, note: 'A new challenge every 4 seconds.' },
   ];
   const DEF = { sens: 1, grip: 7, slide: 0.035, slick: 1.2, bounce: 0.4, knock: 2.4, slop: 1, ramp: 0.07, sound: true, flipX: false, flipY: false };
+  const VDEF = { readAloud: true, reactions: true, checking: true };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ? { ...d, ...v } : { ...d }; } catch (e) { return { ...d }; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   let P = load('barkeep-tune', DEF);
-  const S = load('barkeep-setup', { count: 2, names: ['', '', '', '', ''], pace: 'normal' });
+  const S = load('barkeep-setup', { count: 2, names: ['', '', '', '', ''], pace: 'normal', ...VDEF });
   const saveP = () => store('barkeep-tune', P), saveS = () => store('barkeep-setup', S);
 
   const $ = id => document.getElementById(id);
@@ -306,7 +337,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
   const glass = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0, tipped: false };
   let beer = 100, flash = 0, onRail = false, moving = false;
   const puddles = [];
-  const run = { t: 0, level: 0, nextCh: 0, chStart: 0, chCount: 0, reason: '', cdStart: 0 };
+  const run = { t: 0, level: 0, nextCh: 0, chStart: 0, chCount: 0, reason: '', cdStart: 0, ch: null, chDone: false, bonus: 0, nailed: 0, lowWarned: false };
   const game = { players: [], gameNo: 1, turn: 0, scores: [] };
   let deck = [];
   const sensor = { live: false, on: false, x: 0, y: 0, z: 9.81, fx: 0, fy: 0, sign: 1 };
@@ -337,8 +368,41 @@ tr.lead td{background:rgba(201,154,74,.1)}
     crash() { noise(0.9, 0.5, 900); tone(70, 0.35, 'triangle', 0.4); },
     tick() { tone(660, 0.08, 'square', 0.08); },
     go() { tone(990, 0.25, 'square', 0.1); },
+    nailed() { tone(784, 0.1, 'triangle', 0.2); tone(1046, 0.1, 'triangle', 0.2, 0.08); tone(1568, 0.2, 'triangle', 0.18, 0.16); },
     end() { tone(392, 0.2, 'triangle', 0.2); tone(262, 0.4, 'triangle', 0.2, 0.18); },
   };
+  // ---- speech ----
+  const synth = window.speechSynthesis || null;
+  let voice = null, lastQuip = 0;
+  function pickVoice() {
+    if (!synth) return;
+    const vs = synth.getVoices().filter(v => /^en/i.test(v.lang));
+    voice = vs.find(v => v.localService && /en[-_]US/i.test(v.lang)) || vs.find(v => /en[-_]US/i.test(v.lang)) || vs[0] || null;
+  }
+  if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+  function say(text, opts = {}) {
+    if (!synth) return;
+    try {
+      if (opts.cancel !== false) synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      u.rate = opts.rate || 1.05; u.pitch = opts.pitch || 1; u.volume = 1;
+      synth.speak(u);
+    } catch (e) {}
+  }
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  let quipTimer = 0;
+  function quip(kind, force) {
+    const now = performance.now();
+    if (!force && now - lastQuip < 2200) return;
+    if (!force && synth && synth.speaking && now - chalSpokenAt < 2500) return; // don't talk over the challenge
+    lastQuip = now;
+    const line = pick(QUIPS[kind]);
+    const q = $('quip'); q.querySelector('span').textContent = line; q.classList.add('show');
+    clearTimeout(quipTimer); quipTimer = setTimeout(() => q.classList.remove('show'), 1600);
+    if (S.reactions) say(line, { rate: 1.15, pitch: 1.25 });
+  }
+  let chalSpokenAt = -1e9;
   const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
   // ================= layout =================
@@ -355,6 +419,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
     lv.width = 52 * DPR; lv.height = 52 * DPR; lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     $('countdown').style.top = T + 'px'; $('countdown').style.height = (B - T) + 'px';
     $('hint').style.top = (B - 40) + 'px';
+    $('quip').style.top = (T + 22) + 'px';
     buildWood();
     if (!glass.x) centerGlass();
     glass.x = Math.min(Math.max(glass.x, R + 10), W - R - 10);
@@ -393,6 +458,70 @@ tr.lead td{background:rgba(201,154,74,.1)}
     if (!a || a.x == null) return;
     if (!sensor.live) { sensor.live = true; $('hint').hidden = true; sensor.fx = a.x; sensor.fy = a.y; }
     sensor.x = a.x; sensor.y = a.y; sensor.z = a.z || 0;
+    detect(a, e.rotationRate);
+  }
+  // ---- challenge detectors ----
+  const det = { gx: 0, gy: 0, gz: 9.81, last: 0, spin: 0, jumps: 0, steps: 0, dips: 0, busy: 0,
+    fallMs: 0, inFall: false, lastJump: 0, armed: true, lastStep: 0, lowAt: 0, highAt: 0, lastDip: 0, act: 0 };
+  function resetDet() { Object.assign(det, { spin: 0, jumps: 0, steps: 0, dips: 0, busy: 0, fallMs: 0, inFall: false, lowAt: 0, highAt: 0, act: 0 }); }
+  function detect(a, rr) {
+    const now = performance.now();
+    const dt = Math.min(0.1, Math.max(0.001, (now - (det.last || now - 16)) / 1000)); det.last = now;
+    const ax = a.x, ay = a.y, az = a.z || 0;
+    const k = Math.min(1, dt / 0.6);
+    det.gx += (ax - det.gx) * k; det.gy += (ay - det.gy) * k; det.gz += (az - det.gz) * k;
+    const gm = Math.hypot(det.gx, det.gy, det.gz) || 9.81;
+    const ux = det.gx / gm, uy = det.gy / gm, uz = det.gz / gm;
+    const mag = Math.hypot(ax, ay, az) / 9.81;                  // total, in g
+    const vert = (ax * ux + ay * uy + az * uz) / 9.81;          // along gravity, ~1 at rest
+    const lin = Math.hypot(ax - det.gx, ay - det.gy, az - det.gz) / 9.81;
+    if (mode !== 'play' || !run.ch || !run.ch.check || run.chDone) return;
+    // spin about the vertical axis
+    let rot = 0;
+    if (rr && rr.alpha != null) { rot = (rr.beta || 0) * ux + (rr.gamma || 0) * uy + (rr.alpha || 0) * uz; det.spin += rot * dt; }
+    // jumps / hops: a moment of near free fall
+    if (mag < 0.45) { det.fallMs += dt * 1000; if (det.fallMs > 60 && !det.inFall && now - det.lastJump > 250) { det.inFall = true; det.jumps++; det.lastJump = now; } }
+    else if (mag > 0.7) { det.fallMs = 0; det.inFall = false; }
+    // steps: vertical bounce peaks
+    const dv = vert - 1;
+    if (dv < 0.03) det.armed = true;
+    if (det.armed && dv > 0.17 && now - det.lastStep > 280) { det.steps++; det.lastStep = now; det.armed = false; }
+    // dips: a down-and-up (or up-and-down) move of the tray
+    if (vert < 0.78) det.lowAt = now;
+    if (vert > 1.22) det.highAt = now;
+    if (det.lowAt && det.highAt && Math.abs(det.lowAt - det.highAt) < 1300 && now - det.lastDip > 650) { det.dips++; det.lastDip = now; det.lowAt = det.highAt = 0; }
+    // busy: vigorous motion (dancing)
+    det.act += ((lin > 0.18 || Math.abs(rot) > 90 ? 1 : 0) - det.act) * Math.min(1, dt / 0.3);
+    if (det.act > 0.5) det.busy += dt;
+    checkProgress();
+  }
+  function progressOf(ch) {
+    switch (ch.check) {
+      case 'spin': return Math.abs(det.spin) / ch.n;
+      case 'jump': return det.jumps / ch.n;
+      case 'step': return det.steps / ch.n;
+      case 'dip': return det.dips / ch.n;
+      case 'busy': return det.busy / ch.n;
+    }
+    return 0;
+  }
+  function progressText(ch) {
+    if (!ch.check || !S.checking || !sensor.live) return 'Judges decide';
+    if (run.chDone) return '+' + BONUS + ' s';
+    switch (ch.check) {
+      case 'spin': return Math.min(Math.round(Math.abs(det.spin)), ch.n > 400 ? 720 : 360) + '° of ' + ch.unit;
+      case 'busy': return ch.unit + ' ' + Math.min(det.busy, ch.n).toFixed(1) + ' s';
+      default: { const c = { jump: det.jumps, step: det.steps, dip: det.dips }[ch.check]; return ch.unit + ' ' + Math.min(c, ch.n) + '/' + ch.n; }
+    }
+  }
+  function checkProgress() {
+    if (!S.checking || run.chDone || !run.ch || !run.ch.check) return;
+    if (progressOf(run.ch) >= 1) {
+      run.chDone = true; run.bonus += BONUS; run.nailed++;
+      el.chalLab.textContent = 'Nailed it';
+      sfx.nailed(); buzz([30, 30, 30]);
+      quip('nailed', true);
+    }
   }
   function screenAngle() { const a = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0; return a * Math.PI / 180; }
   function sensorTilt() {
@@ -493,6 +622,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
       const loss = (v - 0.6) * 16 * P.slop;
       spillBeer(loss, hx, hy, loss / 10);
       flash = Math.min(1, 0.4 + loss / 20); sfx.slop(); buzz(40);
+      if (loss >= 7 && beer > 0) quip(beer >= 30 && Math.random() < 0.45 ? 'saved' : 'spill');
     } else if (v > 0.25) { sfx.bump(); }
 
     // leaning on the rail dribbles beer over the edge
@@ -514,6 +644,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
   let dribbleAcc = 0;
   function spillBeer(amount, x, y, size, dribble) {
     beer = Math.max(0, beer - amount);
+    if (beer < 25 && beer > 0 && !run.lowWarned && mode === 'play') { run.lowWarned = true; quip('low'); }
     if (dribble) { dribbleAcc += amount; if (dribbleAcc < 1.5) return; dribbleAcc = 0; size = 0.15; }
     addPuddle(x, y, R * (0.25 + Math.min(1.2, size)));
   }
@@ -593,7 +724,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
   }
 
   // ================= HUD =================
-  const el = { who: $('who'), clock: $('clock'), bar: $('beerbar'), pct: $('beerpct'), meter: $('meter'), chalText: $('chalText'), chalLab: $('chalLab'), chalNext: $('chalNext'), chalBar: $('chalBar'), chal: $('chal') };
+  const el = { who: $('who'), clock: $('clock'), bar: $('beerbar'), pct: $('beerpct'), meter: $('meter'), chalText: $('chalText'), chalLab: $('chalLab'), chalNext: $('chalNext'), chalProg: $('chalProg'), chalBar: $('chalBar'), chal: $('chal') };
   function hud() {
     el.clock.innerHTML = run.t.toFixed(1) + '<small>s</small>';
     el.bar.style.width = beer + '%';
@@ -601,10 +732,12 @@ tr.lead td{background:rgba(201,154,74,.1)}
     el.meter.classList.toggle('low', beer < 25);
     if (mode === 'play' && pace() > 0) {
       const left = Math.max(0, run.nextCh - run.t);
-      el.chalBar.style.width = (100 * left / pace()) + '%';
+      el.chalBar.style.width = (100 * left / (pace() + voicePad())) + '%';
       el.chalNext.textContent = run.chCount ? 'Next in ' + Math.ceil(left) + 's' : '';
+      if (run.ch) { el.chalProg.textContent = progressText(run.ch); el.chalProg.classList.toggle('done', run.chDone); }
     }
   }
+  const voicePad = () => (S.readAloud ? 1.5 : 0);
   const pace = () => (PACES.find(p => p.id === S.pace) || PACES[2]).s;
   function drawCard() {
     if (!deck.length) { deck = CHALLENGES.slice(); for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; } }
@@ -612,12 +745,14 @@ tr.lead td{background:rgba(201,154,74,.1)}
   }
   function newChallenge() {
     run.chCount++; run.level = run.chCount;
+    run.ch = drawCard(); run.chDone = false; resetDet();
     el.chalLab.textContent = 'Challenge ' + run.chCount;
-    el.chalText.textContent = drawCard();
+    el.chalText.textContent = run.ch.text;
+    if (S.readAloud) { say(run.ch.say); chalSpokenAt = performance.now(); }
     el.chal.classList.remove('fresh'); void el.chal.offsetWidth; el.chal.classList.add('fresh');
     sfx.chime(); buzz(60);
   }
-  function setChal(label, text) { el.chalLab.textContent = label; el.chalText.textContent = text; el.chalNext.textContent = ''; el.chalBar.style.width = '0'; }
+  function setChal(label, text) { el.chalLab.textContent = label; el.chalText.textContent = text; el.chalNext.textContent = ''; el.chalProg.textContent = ''; el.chalBar.style.width = '0'; }
 
   // ================= flow =================
   const overlays = ['menu', 'handoff', 'result', 'standings'];
@@ -629,7 +764,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
     $('endBtn').hidden = !(m === 'play' || m === 'countdown');
     $('countdown').hidden = m !== 'countdown';
   }
-  function resetTable() { beer = 100; puddles.length = 0; centerGlass(); run.t = 0; run.level = 0; run.chCount = 0; flash = 0; }
+  function resetTable() { beer = 100; puddles.length = 0; centerGlass(); run.t = 0; run.level = 0; run.chCount = 0; run.ch = null; run.chDone = false; run.bonus = 0; run.nailed = 0; run.lowWarned = false; flash = 0; }
 
   function buildMenu() {
     const cs = $('countSeg'); cs.innerHTML = '';
@@ -652,6 +787,10 @@ tr.lead td{background:rgba(201,154,74,.1)}
       b.setAttribute('aria-pressed', S.pace === p.id); b.onclick = () => { S.pace = p.id; saveS(); buildMenu(); };
       ps.appendChild(b);
     }
+    for (const [id, key] of [['vRead', 'readAloud'], ['vReact', 'reactions'], ['vCheck', 'checking']]) {
+      const b = $(id); b.setAttribute('aria-checked', !!S[key]);
+      b.onclick = () => { S[key] = !S[key]; saveS(); b.setAttribute('aria-checked', S[key]); if (key !== 'checking' && S[key]) { audio(); say(key === 'readAloud' ? 'Spin around three sixty!' : pick(QUIPS.spill), key === 'reactions' ? { rate: 1.15, pitch: 1.25 } : {}); } };
+    }
     $('paceNote').textContent = (PACES.find(p => p.id === S.pace) || PACES[2]).note;
   }
   function goMenu() { setMode('menu'); resetTable(); el.who.textContent = 'Barkeep'; setChal('Get ready', 'Hold the tray level.'); buildMenu(); show('menu'); }
@@ -672,6 +811,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
   }
   async function ready() {
     show(null);
+    if (S.readAloud || S.reactions) say(game.players[game.turn].name + ', hold it level.');
     await ensureSensors();
     resetTable(); setMode('countdown'); run.cdStart = performance.now(); lastCd = -1;
     setChal('Get ready', 'Hold it level while it counts down.');
@@ -698,7 +838,9 @@ tr.lead td{background:rgba(201,154,74,.1)}
     setMode('over');
     run.reason = reason;
     const p = game.players[game.turn];
-    const score = Math.round(run.t * 10) / 10;
+    const score = Math.round((run.t + run.bonus) * 10) / 10;
+    run.carried = Math.round(run.t * 10) / 10;
+    if (reason === 'knock') quip('knock', true); else if (reason === 'dry') quip('dry', true);
     p.last = score; p.total = Math.round((p.total + score) * 10) / 10;
     game.scores.push({ p, score });
     if (reason !== 'quit') sfx.end();
@@ -713,7 +855,12 @@ tr.lead td{background:rgba(201,154,74,.1)}
     const r = $('rsReason');
     r.className = 'reason' + (run.reason === 'dry' ? ' dry' : run.reason === 'quit' ? ' quit' : '');
     r.textContent = run.reason === 'knock' ? 'Knocked it over' : run.reason === 'dry' ? 'Glass ran dry' : 'Ended early';
-    $('rsDetail').textContent = pace() > 0 ? `Survived ${Math.max(0, run.chCount - 1)} challenge${run.chCount - 1 === 1 ? '' : 's'}.` : '';
+    const surv = Math.max(0, run.chCount - 1);
+    let detail = `Carried ${run.carried.toFixed(1)} s`;
+    if (run.nailed) detail += ` + ${run.nailed} challenge${run.nailed === 1 ? '' : 's'} nailed (+${run.bonus} s)`;
+    if (pace() > 0) detail += `. Survived ${surv} challenge${surv === 1 ? '' : 's'}.`;
+    $('rsDetail').textContent = detail;
+    if (S.readAloud) setTimeout(() => say(`${p.name}, ${p.last.toFixed(1)} seconds.`, { cancel: false }), 300);
     const last = game.turn === game.players.length - 1;
     $('rsNext').textContent = last ? (game.players.length > 1 ? 'See standings' : 'See result') : 'Pass to ' + game.players[game.turn + 1].name;
     show('result');
@@ -763,7 +910,7 @@ tr.lead td{background:rgba(201,154,74,.1)}
       if (!glass.tipped) muS = step(dt, tilt);
       run.t += dt;
       if (mode === 'play') {
-        if (pace() > 0 && run.t >= run.nextCh) { newChallenge(); run.nextCh = run.t + pace(); }
+        if (pace() > 0 && run.t >= run.nextCh) { newChallenge(); run.nextCh = run.t + pace() + (S.readAloud ? 1.5 : 0); }
         if (glass.tipped) endTurn('knock');
         else if (beer <= 0) endTurn('dry');
       } else if ((glass.tipped || beer <= 0) && !refillAt) refillAt = now + 1400;
@@ -803,6 +950,8 @@ tr.lead td{background:rgba(201,154,74,.1)}
     endTurn('quit');
   };
 
+  // test hook: queue a specific challenge next
+  window.barkeepQueue = i => { deck.push(CHALLENGES[i]); };
   addEventListener('resize', resize);
   resize(); syncUI(); buildMenu();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
