@@ -1,0 +1,372 @@
+<title>Barkeep Tilt Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap">
+<style>
+/* Layout: one full-bleed canvas (the bar top / tray), a translucent HUD strip on top, a control strip on the bottom, a slide-up tuning sheet. Single committed look: a dark lacquered bar at night. */
+:root{
+  --bar:#1b100c; --bar-hi:#3b2318; --brass:#c99a4a; --foam:#f3e7cf;
+  --ink:#f0e5d4; --ink-dim:#a8957f; --hold:#86b394; --slide:#e8813f; --spill:#d9534f;
+  --panel:rgba(24,14,10,.94); --line:rgba(201,154,74,.28);
+  --f-display:'Alfa Slab One', Georgia, serif;
+  --f-body:'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --f-mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;background:var(--bar);color:var(--ink);overscroll-behavior:none}
+body{font-family:var(--f-body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{position:fixed;inset:0}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 18px;display:flex;align-items:center;gap:12px;pointer-events:none;background:linear-gradient(rgba(27,16,12,.92) 55%,rgba(27,16,12,0))}
+.brand{font-family:var(--f-display);font-size:20px;letter-spacing:.02em;color:var(--brass);line-height:1}
+.chip{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid currentColor;color:var(--hold)}
+.chip.slide{color:var(--slide)}
+.chip.spilled{color:var(--spill)}
+.stats{margin-left:auto;display:flex;gap:12px;align-items:center}
+.stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.stat b{font-family:var(--f-mono);font-weight:500;font-size:14px;font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+#level{width:40px;height:40px;flex:none}
+.meter{width:54px;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--spill)}
+.bottom{position:absolute;left:0;right:0;bottom:0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;justify-content:center;background:linear-gradient(rgba(27,16,12,0),rgba(27,16,12,.92) 45%)}
+button{font:600 14px/1 var(--f-body);letter-spacing:.06em;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;min-width:84px}
+button:active{background:rgba(201,154,74,.18)}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);font-size:16px;padding:15px 26px}
+.hint{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;font-size:13px;color:var(--ink-dim);pointer-events:none}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;background:rgba(14,8,6,.72)}
+.card{max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px 22px;display:flex;flex-direction:column;gap:14px}
+.card h1{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:30px;margin:0;text-wrap:balance}
+.card p{margin:0;line-height:1.45;color:var(--ink);font-size:15px}
+.card p.small{font-size:13px;color:var(--ink-dim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:14px;max-height:72%;overflow-y:auto;touch-action:pan-y}
+.sheet h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--brass);display:flex;justify-content:space-between;align-items:center}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.row label{font-size:14px}
+.row output{font-family:var(--f-mono);font-size:13px;color:var(--brass);font-variant-numeric:tabular-nums}
+.row small{grid-column:1/-1;font-size:12px;color:var(--ink-dim)}
+.row input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--brass);touch-action:pan-x}
+.toggles{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.toggles label{display:flex;gap:8px;align-items:center}
+.toggles input{accent-color:var(--brass);width:18px;height:18px}
+@media (prefers-reduced-motion: reduce){ .sheet{transition:none} }
+</style>
+
+<div id="app">
+  <canvas id="c" aria-label="Bar top with a pint glass that slides when the phone tilts"></canvas>
+
+  <div class="top">
+    <div class="brand">Barkeep</div>
+    <div id="state" class="chip">Holding</div>
+    <div class="stats">
+      <div class="stat"><b id="tilt">0.0°</b><span>Tilt</span></div>
+      <div class="stat"><b id="speed">0</b><span>Speed</span></div>
+      <div class="stat"><div class="meter"><i id="spillbar"></i></div><span>Spill</span></div>
+      <canvas id="level" aria-label="Tilt level with grip ring"></canvas>
+    </div>
+  </div>
+
+  <div id="hint" class="hint" hidden>No tilt sensor here. Drag on the bar to tilt it.</div>
+
+  <div class="bottom">
+    <button id="zeroBtn" type="button">Zero</button>
+    <button id="resetBtn" type="button">Fresh pint</button>
+    <button id="tuneBtn" type="button">Tune</button>
+  </div>
+
+  <div id="sheet" class="sheet" hidden>
+    <h2>Tuning <button id="closeTune" type="button" style="min-width:0;padding:8px 12px">Done</button></h2>
+    <div class="row"><label for="sens">Tilt power</label><output id="sensOut"></output>
+      <input id="sens" type="range" min="0.4" max="2.5" step="0.05"><small>How hard a given tilt pushes the glass.</small></div>
+    <div class="row"><label for="grip">Breakaway angle</label><output id="gripOut"></output>
+      <input id="grip" type="range" min="1" max="20" step="0.5"><small>Tilt needed before a resting glass lets go (static friction).</small></div>
+    <div class="row"><label for="slide">Sliding drag</label><output id="slideOut"></output>
+      <input id="slide" type="range" min="0" max="0.12" step="0.005"><small>Friction once it's moving. Lower than grip, so it lurches when it breaks free.</small></div>
+    <div class="row"><label for="slick">Slickness at speed</label><output id="slickOut"></output>
+      <input id="slick" type="range" min="0" max="3" step="0.1"><small>Drag fades as speed builds, so a runaway pint takes more counter-tilt to stop.</small></div>
+    <div class="row"><label for="bounce">Rail bounce</label><output id="bounceOut"></output>
+      <input id="bounce" type="range" min="0" max="0.9" step="0.05"><small>How much speed survives hitting the edge.</small></div>
+    <div class="toggles">
+      <label><input id="flipX" type="checkbox"> Flip left/right</label>
+      <label><input id="flipY" type="checkbox"> Flip up/down</label>
+    </div>
+    <button id="defaultsBtn" type="button">Restore defaults</button>
+  </div>
+
+  <div id="intro" class="overlay">
+    <div class="card">
+      <h1>Carry the pint</h1>
+      <p>Rest the phone flat on your palm, screen up, like a serving tray. Tap Start and hold steady for a moment while it finds level.</p>
+      <p>Small tilts won't budge the glass. Tip past the breakaway angle and it slides, and the faster it goes the harder you'll have to counter-tilt to catch it.</p>
+      <p class="small">Keep the phone in portrait. If it slides the wrong way, use Tune → Flip.</p>
+      <button id="startBtn" class="primary" type="button">Start</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DEF = { sens: 1, grip: 7, slide: 0.035, slick: 1.2, bounce: 0.4, flipX: false, flipY: false };
+  let P = { ...DEF };
+  try { const s = JSON.parse(localStorage.getItem('barkeep-tune') || 'null'); if (s) P = { ...DEF, ...s }; } catch (e) {}
+  const save = () => { try { localStorage.setItem('barkeep-tune', JSON.stringify(P)); } catch (e) {} };
+
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+  const lv = $('level'), lctx = lv.getContext('2d');
+  let W = 0, H = 0, DPR = 1, R = 40, wood = null;
+
+  // ---------- state ----------
+  const glass = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0 };
+  let spill = 0, moving = false, flash = 0;
+  const sensor = { live: false, x: 0, y: 0, z: 9.81, fx: 0, fy: 0, sign: 1 };
+  let base = { x: 0, y: 0 };
+  const virt = { x: 0, y: 0 };            // drag / keyboard tilt, in g
+  const keys = {};
+  const bubbles = Array.from({ length: 14 }, () => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 0.68; return { x: Math.cos(a) * r, y: Math.sin(a) * r, s: 0.03 + Math.random() * 0.05 }; });
+
+  // ---------- sizing & background ----------
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    R = Math.min(W, H) * 0.12;
+    lv.width = 40 * DPR; lv.height = 40 * DPR; lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildWood();
+    if (!glass.x) { glass.x = W / 2; glass.y = H / 2; }
+    glass.x = Math.min(Math.max(glass.x, R + 10), W - R - 10);
+    glass.y = Math.min(Math.max(glass.y, R + 10), H - R - 10);
+  }
+  function buildWood() {
+    wood = document.createElement('canvas');
+    wood.width = W * DPR; wood.height = H * DPR;
+    const g = wood.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const bg = g.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#2a1810'); bg.addColorStop(0.5, '#1e110c'); bg.addColorStop(1, '#140b08');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    // grain
+    for (let i = 0; i < 90; i++) {
+      const x0 = Math.random() * W;
+      g.strokeStyle = `rgba(${Math.random() < .5 ? '90,52,30' : '10,5,3'},${0.08 + Math.random() * 0.12})`;
+      g.lineWidth = 0.5 + Math.random() * 2.5;
+      g.beginPath(); g.moveTo(x0, -10);
+      for (let y = 0; y <= H + 20; y += 40) g.lineTo(x0 + Math.sin(y / 140 + i) * 6 + (y / H) * 8, y);
+      g.stroke();
+    }
+    // lacquer sheen
+    const sh = g.createLinearGradient(0, H * 0.15, W, H * 0.6);
+    sh.addColorStop(0, 'rgba(255,220,170,0)'); sh.addColorStop(0.5, 'rgba(255,220,170,0.07)'); sh.addColorStop(1, 'rgba(255,220,170,0)');
+    g.fillStyle = sh; g.fillRect(0, 0, W, H);
+    // brass rail (the tray edge)
+    g.strokeStyle = 'rgba(201,154,74,0.55)'; g.lineWidth = 3;
+    roundRect(g, 5, 5, W - 10, H - 10, 22); g.stroke();
+    g.strokeStyle = 'rgba(255,230,180,0.15)'; g.lineWidth = 1;
+    roundRect(g, 8, 8, W - 16, H - 16, 19); g.stroke();
+  }
+  function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  // ---------- sensors ----------
+  function onMotion(e) {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x == null) return;
+    if (!sensor.live) { sensor.live = true; $('hint').hidden = true; sensor.fx = a.x; sensor.fy = a.y; }
+    sensor.x = a.x; sensor.y = a.y; sensor.z = a.z || 0;
+  }
+  function screenAngle() { const a = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0; return a * Math.PI / 180; }
+  // returns tilt pushing the glass, in units of g, in canvas axes (+x right, +y down)
+  function sensorTilt() {
+    const k = 0.3; // low-pass to calm hand tremor
+    sensor.fx += (sensor.x - sensor.fx) * k; sensor.fy += (sensor.y - sensor.fy) * k;
+    const t = screenAngle();
+    const dx = sensor.fx * Math.cos(t) + sensor.fy * Math.sin(t);
+    const dy = -sensor.fx * Math.sin(t) + sensor.fy * Math.cos(t);
+    // Android reports +9.8 on z when face up, iOS -9.8. sensor.sign normalises that.
+    let gx = -dx * sensor.sign / 9.81, gy = dy * sensor.sign / 9.81;
+    return { x: gx, y: gy };
+  }
+  function zero() {
+    if (sensor.live) {
+      sensor.sign = sensor.z < -3 ? -1 : 1;
+      const t = sensorTilt();
+      base = { x: t.x, y: t.y };
+    }
+    virt.x = virt.y = 0;
+  }
+  async function start() {
+    $('intro').hidden = true;
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        const r = await DeviceMotionEvent.requestPermission();
+        if (r !== 'granted') throw new Error('denied');
+      }
+      addEventListener('devicemotion', onMotion);
+    } catch (e) {}
+    try { if (navigator.wakeLock) await navigator.wakeLock.request('screen'); } catch (e) {}
+    setTimeout(zero, 700);
+    setTimeout(() => { if (!sensor.live) $('hint').hidden = false; }, 1500);
+  }
+
+  // ---------- drag / keyboard fallback ----------
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { if (sensor.live) return; drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const s = Math.min(W, H) * 0.45, m = 0.5;
+    virt.x = Math.max(-m, Math.min(m, (e.clientX - drag.x) / s));
+    virt.y = Math.max(-m, Math.min(m, (e.clientY - drag.y) / s));
+  });
+  const endDrag = () => { drag = null; virt.x = virt.y = 0; };
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+  addEventListener('keydown', e => { keys[e.key] = true; });
+  addEventListener('keyup', e => { keys[e.key] = false; });
+
+  function currentTilt() {
+    let t;
+    if (sensor.live) { const s = sensorTilt(); t = { x: s.x - base.x, y: s.y - base.y }; }
+    else {
+      const kx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0), ky = (keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0);
+      t = { x: virt.x + kx * 0.18, y: virt.y + ky * 0.18 };
+    }
+    if (P.flipX) t.x = -t.x; if (P.flipY) t.y = -t.y;
+    return t;
+  }
+
+  // ---------- physics ----------
+  function step(dt, tilt) {
+    const G = Math.min(W, H) * 6 * P.sens;           // exaggerated gravity, px/s² per g
+    const ax = tilt.x * G, ay = tilt.y * G;
+    const drive = Math.hypot(tilt.x, tilt.y);
+    const muS = Math.sin(P.grip * Math.PI / 180);   // breakaway angle → static coefficient
+    let sp = Math.hypot(glass.vx, glass.vy);
+    glass.pvx = glass.vx; glass.pvy = glass.vy;
+
+    if (sp < 3) {
+      if (drive <= muS) { glass.vx = glass.vy = 0; moving = false; }
+      else { glass.vx += ax * dt; glass.vy += ay * dt; moving = true; }   // breaks free with only sliding drag holding it
+    } else {
+      moving = true;
+      glass.vx += ax * dt; glass.vy += ay * dt;
+      sp = Math.hypot(glass.vx, glass.vy);
+      const ref = G * 0.25;
+      const muK = P.slide / (1 + P.slick * sp / ref);     // slicker as it speeds up
+      const dv = muK * G * dt;
+      if (sp <= dv) { glass.vx = glass.vy = 0; }
+      else { glass.vx -= glass.vx / sp * dv; glass.vy -= glass.vy / sp * dv; }
+    }
+
+    glass.x += glass.vx * dt; glass.y += glass.vy * dt;
+
+    // rails
+    const m = 10 + R, e = P.bounce;
+    let hit = 0;
+    if (glass.x < m) { glass.x = m; hit = Math.max(hit, -glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
+    if (glass.x > W - m) { glass.x = W - m; hit = Math.max(hit, glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
+    if (glass.y < m) { glass.y = m; hit = Math.max(hit, -glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    if (glass.y > H - m) { glass.y = H - m; hit = Math.max(hit, glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    const thresh = Math.min(W, H) * 0.9;
+    if (hit > thresh && spill < 100) { spill = Math.min(100, spill + (hit - thresh) / thresh * 25); flash = 1; navigator.vibrate?.(30); }
+
+    // slosh: the beer surface lags the glass's acceleration (spring-damper)
+    let gax = (glass.vx - glass.pvx) / dt, gay = (glass.vy - glass.pvy) / dt;
+    const cap = G * 3; gax = Math.max(-cap, Math.min(cap, gax)); gay = Math.max(-cap, Math.min(cap, gay));
+    const k = 140, c = 7, s = 0.012 * R / 4;
+    glass.svx += (-k * glass.sx - c * glass.svx - gax * s) * dt;
+    glass.svy += (-k * glass.sy - c * glass.svy - gay * s) * dt;
+    glass.sx += glass.svx * dt; glass.sy += glass.svy * dt;
+    const lim = R * 0.22, so = Math.hypot(glass.sx, glass.sy);
+    if (so > lim) { glass.sx *= lim / so; glass.sy *= lim / so; }
+
+    flash = Math.max(0, flash - dt * 2.5);
+    return { muS, G };
+  }
+
+  // ---------- drawing ----------
+  function draw(tilt) {
+    ctx.drawImage(wood, 0, 0, W, H);
+    if (flash > 0) { ctx.fillStyle = `rgba(217,83,79,${flash * 0.18})`; ctx.fillRect(0, 0, W, H); }
+    const { x, y } = glass;
+    // shadow shifts with tilt, as if lit from straight above
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.ellipse(x + 6 - tilt.x * 20, y + 9 - tilt.y * 20, R * 1.04, R * 1.04, 0, 0, 6.283); ctx.fill();
+    // glass base
+    ctx.fillStyle = 'rgba(220,235,240,0.10)';
+    ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fill();
+    // beer
+    const bx = x + glass.sx * 0.5, by = y + glass.sy * 0.5;
+    const beer = ctx.createRadialGradient(bx - R * 0.2, by - R * 0.2, R * 0.1, x, y, R * 0.9);
+    beer.addColorStop(0, '#f6c04a'); beer.addColorStop(0.7, '#d48a1c'); beer.addColorStop(1, '#8f4d0e');
+    ctx.fillStyle = beer; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, 6.283); ctx.fill();
+    // foam head, sloshing
+    const fx = x + glass.sx, fy = y + glass.sy, fr = R * 0.74;
+    const foam = ctx.createRadialGradient(fx - fr * 0.3, fy - fr * 0.3, fr * 0.1, fx, fy, fr);
+    foam.addColorStop(0, '#fffaf0'); foam.addColorStop(0.75, '#f3e7cf'); foam.addColorStop(1, '#d9c39c');
+    ctx.fillStyle = foam; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 6.283); ctx.fill();
+    ctx.fillStyle = 'rgba(190,160,115,0.35)';
+    for (const b of bubbles) { ctx.beginPath(); ctx.arc(fx + b.x * fr, fy + b.y * fr, b.s * R, 0, 6.283); ctx.fill(); }
+    // rim
+    ctx.lineWidth = Math.max(2, R * 0.06);
+    ctx.strokeStyle = 'rgba(235,245,248,0.45)';
+    ctx.beginPath(); ctx.arc(x, y, R * 0.95, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, R * 0.035);
+    ctx.beginPath(); ctx.arc(x, y, R * 0.95, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+  }
+
+  function drawLevel(tilt, muS) {
+    const c = 20, rr = 17, scale = rr / 0.35; // ring edge = 0.35 g ≈ 20°
+    lctx.clearRect(0, 0, 40, 40);
+    lctx.strokeStyle = 'rgba(201,154,74,0.6)'; lctx.lineWidth = 1.5;
+    lctx.beginPath(); lctx.arc(c, c, rr, 0, 6.283); lctx.stroke();
+    lctx.setLineDash([2, 2]); lctx.strokeStyle = 'rgba(134,179,148,0.9)';
+    lctx.beginPath(); lctx.arc(c, c, Math.min(rr, muS * scale), 0, 6.283); lctx.stroke(); lctx.setLineDash([]);
+    let dx = tilt.x * scale, dy = tilt.y * scale; const d = Math.hypot(dx, dy); if (d > rr) { dx *= rr / d; dy *= rr / d; }
+    lctx.fillStyle = Math.hypot(tilt.x, tilt.y) > muS ? '#e8813f' : '#f0e5d4';
+    lctx.beginPath(); lctx.arc(c + dx, c + dy, 4, 0, 6.283); lctx.fill();
+  }
+
+  // ---------- HUD ----------
+  const elState = $('state'), elTilt = $('tilt'), elSpeed = $('speed'), elSpill = $('spillbar');
+  let hudT = 0;
+  function hud(tilt) {
+    const deg = Math.asin(Math.min(1, Math.hypot(tilt.x, tilt.y))) * 180 / Math.PI;
+    elTilt.textContent = deg.toFixed(1) + '°';
+    elSpeed.textContent = Math.round(Math.hypot(glass.vx, glass.vy) / Math.min(W, H) * 100);
+    elSpill.style.width = spill + '%';
+    const st = spill >= 100 ? 'spilled' : moving ? 'slide' : 'hold';
+    elState.className = 'chip' + (st === 'hold' ? '' : ' ' + st);
+    elState.textContent = st === 'spilled' ? 'Spilled' : st === 'slide' ? 'Sliding' : 'Holding';
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
+    const tilt = currentTilt();
+    const { muS } = step(dt, tilt);
+    draw(tilt);
+    drawLevel(tilt, muS);
+    if (now - hudT > 80) { hud(tilt); hudT = now; }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- controls ----------
+  const fmt = { sens: v => v.toFixed(2) + '×', grip: v => v.toFixed(1) + '°', slide: v => v.toFixed(3), slick: v => v.toFixed(1), bounce: v => Math.round(v * 100) + '%' };
+  function syncUI() {
+    for (const k of Object.keys(fmt)) { $(k).value = P[k]; $(k + 'Out').textContent = fmt[k](+P[k]); }
+    $('flipX').checked = P.flipX; $('flipY').checked = P.flipY;
+  }
+  for (const k of Object.keys(fmt)) $(k).addEventListener('input', e => { P[k] = +e.target.value; $(k + 'Out').textContent = fmt[k](P[k]); save(); });
+  $('flipX').addEventListener('change', e => { P.flipX = e.target.checked; save(); });
+  $('flipY').addEventListener('change', e => { P.flipY = e.target.checked; save(); });
+  $('defaultsBtn').addEventListener('click', () => { P = { ...DEF }; save(); syncUI(); });
+  $('tuneBtn').addEventListener('click', () => { $('sheet').hidden = false; });
+  $('closeTune').addEventListener('click', () => { $('sheet').hidden = true; });
+  $('zeroBtn').addEventListener('click', zero);
+  $('resetBtn').addEventListener('click', () => { Object.assign(glass, { x: W / 2, y: H / 2, vx: 0, vy: 0, sx: 0, sy: 0, svx: 0, svy: 0 }); spill = 0; });
+  $('startBtn').addEventListener('click', start);
+
+  addEventListener('resize', resize);
+  resize(); syncUI();
+  requestAnimationFrame(frame);
+})();
+</script>
