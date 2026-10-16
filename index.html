@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Barkeep Tilt Test</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap">
@@ -12,22 +17,27 @@
   --f-mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
   color-scheme:dark;
 }
-html,body{height:100%;background:var(--bar);color:var(--ink);overscroll-behavior:none}
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bar);color:var(--ink);overscroll-behavior:none}
 body{font-family:var(--f-body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 #app{position:fixed;inset:0}
 #c{position:absolute;inset:0;width:100%;height:100%;display:block}
-.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 18px;display:flex;align-items:center;gap:12px;pointer-events:none;background:linear-gradient(rgba(27,16,12,.92) 55%,rgba(27,16,12,0))}
-.brand{font-family:var(--f-display);font-size:20px;letter-spacing:.02em;color:var(--brass);line-height:1}
-.chip{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid currentColor;color:var(--hold)}
+.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;display:flex;flex-direction:column;gap:12px;pointer-events:none;background:var(--bar);border-bottom:1px solid var(--line)}
+.toprow{display:flex;align-items:center;gap:12px}
+.brand{font-family:var(--f-display);font-size:26px;letter-spacing:.02em;color:var(--brass);line-height:1}
+.chip{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1.5px solid currentColor;color:var(--hold)}
 .chip.slide{color:var(--slide)}
 .chip.spilled{color:var(--spill)}
-.stats{margin-left:auto;display:flex;gap:12px;align-items:center}
-.stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.stat b{font-family:var(--f-mono);font-weight:500;font-size:14px;font-variant-numeric:tabular-nums}
-.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
-#level{width:40px;height:40px;flex:none}
-.meter{width:54px;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
-.meter i{display:block;height:100%;width:0;background:var(--spill)}
+#level{width:52px;height:52px;flex:none;margin-left:auto}
+.stats{display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:end}
+.stat{display:flex;flex-direction:column;gap:3px;min-width:0}
+.stat b{font-family:var(--f-mono);font-weight:500;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.spillwrap{display:flex;align-items:center;gap:10px}
+.meter{flex:1;height:16px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid var(--line);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--spill);transition:width .15s}
+#spillpct{font-size:18px}
 .bottom{position:absolute;left:0;right:0;bottom:0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;justify-content:center;background:linear-gradient(rgba(27,16,12,0),rgba(27,16,12,.92) 45%)}
 button{font:600 14px/1 var(--f-body);letter-spacing:.06em;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;min-width:84px}
 button:active{background:rgba(201,154,74,.18)}
@@ -35,10 +45,11 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);font-size:16px;padding:15px 26px}
 .hint{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;font-size:13px;color:var(--ink-dim);pointer-events:none}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;background:rgba(14,8,6,.72)}
-.card{max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px 22px;display:flex;flex-direction:column;gap:14px}
-.card h1{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:30px;margin:0;text-wrap:balance}
-.card p{margin:0;line-height:1.45;color:var(--ink);font-size:15px}
-.card p.small{font-size:13px;color:var(--ink-dim)}
+.card{width:100%;max-width:520px;max-height:92%;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:18px}
+.card h1{font-family:var(--f-display);font-weight:400;color:var(--brass);font-size:40px;line-height:1.05;margin:0;text-wrap:balance}
+.card p{margin:0;line-height:1.45;color:var(--ink);font-size:20px}
+.card p.small{font-size:17px;color:var(--ink-dim)}
+.card .primary{font-size:22px;padding:20px 26px}
 .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:14px;max-height:72%;overflow-y:auto;touch-action:pan-y}
 .sheet h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--brass);display:flex;justify-content:space-between;align-items:center}
 .row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
@@ -52,23 +63,27 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
 @media (prefers-reduced-motion: reduce){ .sheet{transition:none} }
 </style>
 
+</head>
+<body>
 <div id="app">
   <canvas id="c" aria-label="Bar top with a pint glass that slides when the phone tilts"></canvas>
 
-  <div class="top">
-    <div class="brand">Barkeep</div>
-    <div id="state" class="chip">Holding</div>
+  <div id="top" class="top">
+    <div class="toprow">
+      <div class="brand">Barkeep</div>
+      <div id="state" class="chip">Holding</div>
+      <canvas id="level" aria-label="Tilt level with grip ring"></canvas>
+    </div>
     <div class="stats">
       <div class="stat"><b id="tilt">0.0°</b><span>Tilt</span></div>
       <div class="stat"><b id="speed">0</b><span>Speed</span></div>
-      <div class="stat"><div class="meter"><i id="spillbar"></i></div><span>Spill</span></div>
-      <canvas id="level" aria-label="Tilt level with grip ring"></canvas>
+      <div class="stat"><div class="spillwrap"><div class="meter"><i id="spillbar"></i></div><b id="spillpct">0%</b></div><span>Spill</span></div>
     </div>
   </div>
 
   <div id="hint" class="hint" hidden>No tilt sensor here. Drag on the bar to tilt it.</div>
 
-  <div class="bottom">
+  <div id="bottom" class="bottom">
     <button id="zeroBtn" type="button">Zero</button>
     <button id="resetBtn" type="button">Fresh pint</button>
     <button id="tuneBtn" type="button">Tune</button>
@@ -114,7 +129,7 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
   const $ = id => document.getElementById(id);
   const cv = $('c'), ctx = cv.getContext('2d');
   const lv = $('level'), lctx = lv.getContext('2d');
-  let W = 0, H = 0, DPR = 1, R = 40, wood = null;
+  let W = 0, H = 0, DPR = 1, R = 40, wood = null, T = 0, B = 0;
 
   // ---------- state ----------
   const glass = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0, sx: 0, sy: 0, svx: 0, svy: 0 };
@@ -131,12 +146,15 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     W = innerWidth; H = innerHeight;
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    R = Math.min(W, H) * 0.12;
-    lv.width = 40 * DPR; lv.height = 40 * DPR; lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    T = Math.round($('top').getBoundingClientRect().bottom) + 4;
+    B = Math.round($('bottom').getBoundingClientRect().top) + 14;
+    if (B - T < 200) { T = 0; B = H; }
+    R = Math.min(W, B - T) * 0.12;
+    lv.width = 52 * DPR; lv.height = 52 * DPR; lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     buildWood();
-    if (!glass.x) { glass.x = W / 2; glass.y = H / 2; }
+    if (!glass.x) { glass.x = W / 2; glass.y = (T + B) / 2; }
     glass.x = Math.min(Math.max(glass.x, R + 10), W - R - 10);
-    glass.y = Math.min(Math.max(glass.y, R + 10), H - R - 10);
+    glass.y = Math.min(Math.max(glass.y, T + R + 10), B - R - 10);
   }
   function buildWood() {
     wood = document.createElement('canvas');
@@ -160,9 +178,9 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     g.fillStyle = sh; g.fillRect(0, 0, W, H);
     // brass rail (the tray edge)
     g.strokeStyle = 'rgba(201,154,74,0.55)'; g.lineWidth = 3;
-    roundRect(g, 5, 5, W - 10, H - 10, 22); g.stroke();
+    roundRect(g, 5, T + 2, W - 10, B - T - 4, 22); g.stroke();
     g.strokeStyle = 'rgba(255,230,180,0.15)'; g.lineWidth = 1;
-    roundRect(g, 8, 8, W - 16, H - 16, 19); g.stroke();
+    roundRect(g, 8, T + 5, W - 16, B - T - 10, 19); g.stroke();
   }
   function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
@@ -262,8 +280,8 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
     let hit = 0;
     if (glass.x < m) { glass.x = m; hit = Math.max(hit, -glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
     if (glass.x > W - m) { glass.x = W - m; hit = Math.max(hit, glass.vx); glass.vx = -glass.vx * e; glass.vy *= 0.9; }
-    if (glass.y < m) { glass.y = m; hit = Math.max(hit, -glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
-    if (glass.y > H - m) { glass.y = H - m; hit = Math.max(hit, glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    if (glass.y < T + m) { glass.y = T + m; hit = Math.max(hit, -glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
+    if (glass.y > B - m) { glass.y = B - m; hit = Math.max(hit, glass.vy); glass.vy = -glass.vy * e; glass.vx *= 0.9; }
     const thresh = Math.min(W, H) * 0.9;
     if (hit > thresh && spill < 100) { spill = Math.min(100, spill + (hit - thresh) / thresh * 25); flash = 1; navigator.vibrate?.(30); }
 
@@ -313,25 +331,25 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
   }
 
   function drawLevel(tilt, muS) {
-    const c = 20, rr = 17, scale = rr / 0.35; // ring edge = 0.35 g ≈ 20°
-    lctx.clearRect(0, 0, 40, 40);
+    const c = 26, rr = 23, scale = rr / 0.35; // ring edge = 0.35 g ≈ 20°
+    lctx.clearRect(0, 0, 52, 52);
     lctx.strokeStyle = 'rgba(201,154,74,0.6)'; lctx.lineWidth = 1.5;
     lctx.beginPath(); lctx.arc(c, c, rr, 0, 6.283); lctx.stroke();
     lctx.setLineDash([2, 2]); lctx.strokeStyle = 'rgba(134,179,148,0.9)';
     lctx.beginPath(); lctx.arc(c, c, Math.min(rr, muS * scale), 0, 6.283); lctx.stroke(); lctx.setLineDash([]);
     let dx = tilt.x * scale, dy = tilt.y * scale; const d = Math.hypot(dx, dy); if (d > rr) { dx *= rr / d; dy *= rr / d; }
     lctx.fillStyle = Math.hypot(tilt.x, tilt.y) > muS ? '#e8813f' : '#f0e5d4';
-    lctx.beginPath(); lctx.arc(c + dx, c + dy, 4, 0, 6.283); lctx.fill();
+    lctx.beginPath(); lctx.arc(c + dx, c + dy, 5.5, 0, 6.283); lctx.fill();
   }
 
   // ---------- HUD ----------
-  const elState = $('state'), elTilt = $('tilt'), elSpeed = $('speed'), elSpill = $('spillbar');
+  const elState = $('state'), elTilt = $('tilt'), elSpeed = $('speed'), elSpill = $('spillbar'), elSpillPct = $('spillpct');
   let hudT = 0;
   function hud(tilt) {
     const deg = Math.asin(Math.min(1, Math.hypot(tilt.x, tilt.y))) * 180 / Math.PI;
     elTilt.textContent = deg.toFixed(1) + '°';
     elSpeed.textContent = Math.round(Math.hypot(glass.vx, glass.vy) / Math.min(W, H) * 100);
-    elSpill.style.width = spill + '%';
+    elSpill.style.width = spill + '%'; elSpillPct.textContent = Math.round(spill) + '%';
     const st = spill >= 100 ? 'spilled' : moving ? 'slide' : 'hold';
     elState.className = 'chip' + (st === 'hold' ? '' : ' ' + st);
     elState.textContent = st === 'spilled' ? 'Spilled' : st === 'slide' ? 'Sliding' : 'Holding';
@@ -362,11 +380,15 @@ button.primary{background:var(--brass);color:#1b100c;border-color:var(--brass);f
   $('tuneBtn').addEventListener('click', () => { $('sheet').hidden = false; });
   $('closeTune').addEventListener('click', () => { $('sheet').hidden = true; });
   $('zeroBtn').addEventListener('click', zero);
-  $('resetBtn').addEventListener('click', () => { Object.assign(glass, { x: W / 2, y: H / 2, vx: 0, vy: 0, sx: 0, sy: 0, svx: 0, svy: 0 }); spill = 0; });
+  $('resetBtn').addEventListener('click', () => { Object.assign(glass, { x: W / 2, y: (T + B) / 2, vx: 0, vy: 0, sx: 0, sy: 0, svx: 0, svy: 0 }); spill = 0; });
   $('startBtn').addEventListener('click', start);
 
   addEventListener('resize', resize);
   resize(); syncUI();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
   requestAnimationFrame(frame);
 })();
 </script>
+
+</body>
+</html>
