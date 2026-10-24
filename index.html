@@ -234,6 +234,8 @@ button:disabled{opacity:.5;cursor:default}
         <div class="toggle"><span>Spill reactions<small>“Oh no!” and friends, spoken out loud.</small></span><button type="button" class="switch" role="switch" id="vReact" aria-label="Spill reactions"></button></div>
         <div class="toggle"><span>Check challenges<small>Sensors spot spins, jumps, steps and squats. +3 s each.</small></span><button type="button" class="switch" role="switch" id="vCheck" aria-label="Check challenges with sensors"></button></div>
       </div>
+      <div class="btnrow"><button id="soundBtn" type="button">Test sound</button></div>
+      <p class="dim" id="soundHint">No sound? Turn the volume up and, on an iPhone, flip the ring/silent switch to ring.</p>
       <details>
         <summary>How it plays</summary>
         <ul>
@@ -2717,7 +2719,32 @@ var qrcode = function() {
 
   // ================= sound =================
   let ac = null;
-  function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); }
+  let acUnlocked = false, silentEl = null;
+  // A silent looping <audio> element moves iOS into "playback" mode so sound isn't muted by the ring/silent switch.
+  function silentWav() {
+    const n = 4000, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) b[o + i] = str.charCodeAt(i); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+    b.fill(128, 44);
+    let bin = ''; for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]);
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  function audio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (ac && ac.state !== 'running') { try { const r = ac.resume(); r && r.catch && r.catch(() => {}); } catch (e) {} }
+    if (ac && !acUnlocked) {
+      try { const buf = ac.createBuffer(1, 1, 22050), src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination); src.start(0); acUnlocked = true; } catch (e) {}
+    }
+    try {
+      if (!silentEl) { silentEl = new Audio(silentWav()); silentEl.loop = true; silentEl.setAttribute('playsinline', ''); silentEl.volume = 0.01; }
+      if (silentEl.paused) { const r = silentEl.play(); r && r.catch && r.catch(() => {}); }
+    } catch (e) {}
+  }
+  // Every tap re-wakes audio (phones suspend it after a lock screen, call or notification).
+  addEventListener('pointerdown', audio, { capture: true, passive: true });
+  addEventListener('touchend', audio, { capture: true, passive: true });
   function tone(f, d, type = 'sine', vol = 0.2, when = 0) {
     if (!ac || !P.sound) return;
     const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
@@ -2750,14 +2777,19 @@ var qrcode = function() {
     voice = vs.find(v => v.localService && /en[-_]US/i.test(v.lang)) || vs.find(v => /en[-_]US/i.test(v.lang)) || vs[0] || null;
   }
   if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+  let speakTimer = 0;
   function say(text, opts = {}) {
     if (!synth) return;
     try {
-      if (opts.cancel !== false) synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       if (voice) u.voice = voice;
+      u.lang = (voice && voice.lang) || 'en-US';
       u.rate = opts.rate || 1.05; u.pitch = opts.pitch || 1; u.volume = 1;
-      synth.speak(u);
+      const go = () => { try { if (synth.paused) synth.resume(); synth.speak(u); } catch (e) {} };
+      clearTimeout(speakTimer);
+      // Safari drops an utterance queued right after cancel(), so give cancel a moment to finish.
+      if (opts.cancel !== false && (synth.speaking || synth.pending)) { synth.cancel(); speakTimer = setTimeout(go, 80); }
+      else go();
     } catch (e) {}
   }
   const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -2925,7 +2957,7 @@ var qrcode = function() {
     }
     try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
   }
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && sensor.on) ensureSensors(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { if (sensor.on) ensureSensors(); if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } } });
 
   // drag / keyboard fallback
   let drag = null;
@@ -3663,6 +3695,7 @@ var qrcode = function() {
     $('newPlayersBtn').textContent = 'Leave room';
   }
 
+  $('soundBtn').onclick = () => { audio(); P.sound = true; saveP(); syncUI(); sfx.chime(); setTimeout(() => sfx.nailed(), 350); say('Cheers! Sound is working.'); };
   $('hostBtn').onclick = hostGame;
   $('joinBtn').onclick = joinGame;
   $('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
