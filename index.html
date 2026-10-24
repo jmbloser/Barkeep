@@ -176,7 +176,7 @@ button:disabled{opacity:.5;cursor:default}
 
   <div id="bottom" class="bottom">
     <div id="chal">
-      <div class="chalhead"><span class="challeft"><span id="chalLab">Get ready</span><span id="chalProg"></span></span><span id="chalNext"></span></div>
+      <div class="chalhead"><span class="challeft"><span id="chalLab">Get ready</span><span id="chalProg"></span></span><span id="voiceWarn" class="pill off" hidden>Voice blocked · tap screen</span><span id="chalNext"></span></div>
       <div id="chalText">Hold the tray level.</div>
       <div class="cbar"><i id="chalBar"></i></div>
     </div>
@@ -2743,7 +2743,7 @@ var qrcode = function() {
     } catch (e) {}
   }
   // Every tap re-wakes audio (phones suspend it after a lock screen, call or notification).
-  addEventListener('pointerdown', audio, { capture: true, passive: true });
+  addEventListener('pointerdown', () => { audio(); replayMissed(); }, { capture: true, passive: true });
   addEventListener('touchend', audio, { capture: true, passive: true });
   function tone(f, d, type = 'sine', vol = 0.2, when = 0) {
     if (!ac || !P.sound) return;
@@ -2751,18 +2751,19 @@ var qrcode = function() {
     o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
   }
-  function noise(d, vol, freq) {
+  function noise(d, vol, freq, type = 'lowpass') {
     if (!ac || !P.sound) return;
     const n = ac.sampleRate * d, buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
     for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
     const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-    f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol; s.buffer = buf; s.connect(f).connect(g).connect(ac.destination); s.start();
+    f.type = type; f.frequency.value = freq; g.gain.value = vol; s.buffer = buf; s.connect(f).connect(g).connect(ac.destination); s.start();
   }
   const sfx = {
     chime() { tone(880, 0.14, 'sine', 0.18); tone(1320, 0.22, 'sine', 0.16, 0.09); },
-    bump() { tone(110, 0.12, 'triangle', 0.35); },
-    slop() { noise(0.35, 0.35, 1400); },
-    crash() { noise(0.9, 0.5, 900); tone(70, 0.35, 'triangle', 0.4); },
+    // glass on a brass rail: bright clink partials plus a short knock (phone speakers can't play deep thuds)
+    bump() { tone(2350, 0.18, 'sine', 0.22); tone(3720, 0.12, 'sine', 0.12); tone(420, 0.06, 'triangle', 0.25); noise(0.04, 0.25, 2500, 'highpass'); },
+    slop() { tone(1900, 0.12, 'sine', 0.18); noise(0.45, 0.5, 2600); },
+    crash() { tone(2600, 0.3, 'sine', 0.25); tone(3300, 0.35, 'sine', 0.18, 0.05); tone(1750, 0.4, 'sine', 0.18, 0.11); noise(0.9, 0.6, 2200); tone(330, 0.25, 'triangle', 0.3); },
     tick() { tone(660, 0.08, 'square', 0.08); },
     go() { tone(990, 0.25, 'square', 0.1); },
     nailed() { tone(784, 0.1, 'triangle', 0.2); tone(1046, 0.1, 'triangle', 0.2, 0.08); tone(1568, 0.2, 'triangle', 0.18, 0.16); },
@@ -2777,11 +2778,17 @@ var qrcode = function() {
     voice = vs.find(v => v.localService && /en[-_]US/i.test(v.lang)) || vs.find(v => /en[-_]US/i.test(v.lang)) || vs[0] || null;
   }
   if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
-  let speakTimer = 0;
+  let speakTimer = 0, sayId = 0, missed = null;
+  function voiceBlocked(on) { const v = $('voiceWarn'); if (v) v.hidden = !on; }
+  // If the phone refuses to speak (it didn't start within 1.5 s), remember the line; the next tap replays it.
+  function replayMissed() { if (missed) { const m = missed; missed = null; voiceBlocked(false); say(m.text, m.opts); } }
   function say(text, opts = {}) {
-    if (!synth) return;
+    if (!synth) { if (opts.important) voiceBlocked(true); return; }
     try {
+      const id = ++sayId; let started = false;
       const u = new SpeechSynthesisUtterance(text);
+      u.onstart = () => { started = true; if (id === sayId) { missed = null; voiceBlocked(false); } };
+      if (opts.important) setTimeout(() => { if (!started && id === sayId) { missed = { text, opts }; voiceBlocked(true); try { synth.cancel(); } catch (e) {} } }, 1500);
       if (voice) u.voice = voice;
       u.lang = (voice && voice.lang) || 'en-US';
       u.rate = opts.rate || 1.05; u.pitch = opts.pitch || 1; u.volume = 1;
@@ -3155,7 +3162,7 @@ var qrcode = function() {
     run.ch = MP && MP.deck ? MP.deck[(run.chCount - 1) % MP.deck.length] : drawCard(); run.chDone = false; resetDet();
     el.chalLab.textContent = 'Challenge ' + run.chCount;
     el.chalText.textContent = run.ch.text;
-    if (S.readAloud && !MP) { say(run.ch.say); chalSpokenAt = performance.now(); }
+    if (S.readAloud && !MP) { say(run.ch.say, { important: true }); chalSpokenAt = performance.now(); }
     el.chal.classList.remove('fresh'); void el.chal.offsetWidth; el.chal.classList.add('fresh');
     sfx.chime(); buzz(60);
   }
@@ -3541,7 +3548,7 @@ var qrcode = function() {
     const tt = (net.now() - st.startAt) / 1000, iv = st.paceS + 1.5;
     if (tt < 1.5) return;
     const i = Math.floor((tt - 1.5) / iv);
-    if (i > MP.spoken) { MP.spoken = i; const c = MP.deck[i % MP.deck.length]; say(c.say); chalSpokenAt = performance.now(); }
+    if (i > MP.spoken) { MP.spoken = i; const c = MP.deck[i % MP.deck.length]; say(c.say, { important: true }); chalSpokenAt = performance.now(); }
   }
   function mpOut(score, reason) {
     const me = (MP.room && MP.room.players || {})[myId] || {};
